@@ -10,23 +10,16 @@ company/sector news — from free web sources and market data.
 
 ## Stack
 
-- Kotlin 2.4 / JVM 21
-- Gradle (Kotlin DSL)
+- Kotlin 2.4 / JVM 25
+- Gradle 9 (Kotlin DSL, wrapper included)
 - Ktor 3 (Netty) + kotlinx.serialization
 
-## Layout
+## Requirements
 
-```
-src/main/kotlin/com/marketbrief/
-├── Application.kt       # entry point (boots Ktor, /health)
-├── domain/              # pure domain model, ports, services
-├── application/         # use cases
-├── infrastructure/      # adapters (market data, news ingestion, LLM extractor)
-└── http/                # Ktor routes + DTOs
-```
+- JDK 25 (Temurin recommended) — the Gradle wrapper handles the rest.
 
-See [`PRD.md`](PRD.md) for the product spec and [`GLOSSARY.md`](GLOSSARY.md) for
-domain vocabulary.
+See [`PRD.md`](PRD.md) for the product spec, [`ARCHITECTURE.md`](ARCHITECTURE.md)
+for the design, and [`GLOSSARY.md`](GLOSSARY.md) for domain vocabulary.
 
 ## Run
 
