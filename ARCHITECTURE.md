@@ -10,10 +10,6 @@ This document describes the intended architecture. It follows a
 layers. It is the code-level counterpart to [`PRD.md`](PRD.md) (the *what*) and
 [`GLOSSARY.md`](GLOSSARY.md) (the *vocabulary*).
 
-> **Status: design only.** The repository currently contains the project
-> skeleton (build files + empty layered packages + a `/health` endpoint). The
-> components below are **not yet implemented**.
-
 ---
 
 ## 1. Layer overview

@@ -2,9 +2,7 @@ package com.marketbrief.domain
 
 import java.time.LocalDate
 
-/**
- * Every port has a production adapter plus a fallback/fake.
- */
+data class DayWindow(val date: LocalDate)
 
 interface MarketData {
     fun snapshot(instruments: Set<Instrument>): Snapshot

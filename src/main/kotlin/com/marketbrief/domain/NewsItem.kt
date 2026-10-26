@@ -1,21 +1,17 @@
 package com.marketbrief.domain
 
-/** The typed unit extracted from an article. */
-
 enum class NewsItemType { MARKET_MOVE, COMPANY, SECTOR, MACRO }
 
 enum class Region { US, CHINA, EUROPE, LATAM, ASIA, GLOBAL }
 
 enum class Direction { UP, DOWN, FLAT }
 
-/** What a NewsItem is about: a company/ticker, sector, index, or asset class. */
 data class Subject(val name: String) {
     init {
         require(name.isNotBlank()) { "Subject name must not be blank" }
     }
 }
 
-/** A number with a unit extracted from prose (e.g. "−1.2%", "$42B"). */
 data class Metric(val value: String, val unit: String) {
     init {
         require(value.isNotBlank()) { "Metric value must not be blank" }
@@ -23,10 +19,6 @@ data class Metric(val value: String, val unit: String) {
     }
 }
 
-/**
- * The citation backing an assertion: the article id plus the quote span(s)
- * from that article that support it.
- */
 data class Source(val articleId: String, val quotes: List<String>) {
     init {
         require(articleId.isNotBlank()) { "Source articleId must not be blank" }
@@ -35,10 +27,6 @@ data class Source(val articleId: String, val quotes: List<String>) {
     }
 }
 
-/**
- * The central domain type. The citation invariant is enforced at
- * construction: a NewsItem without a backing source cannot exist.
- */
 data class NewsItem(
     val type: NewsItemType,
     val region: Region,

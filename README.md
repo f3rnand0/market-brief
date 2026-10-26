@@ -4,10 +4,6 @@ A Kotlin service that generates a daily summary of the most important global
 investment-market news — index moves, an asset-class snapshot, and regional and
 company/sector news — from free web sources and market data.
 
-> **Status: skeleton.** This repo currently contains only the project
-> scaffolding and the target architecture. No extraction logic is implemented
-> yet, and LangChain4j is intentionally not included.
-
 ## Stack
 
 - Kotlin 2.4 / JVM 25

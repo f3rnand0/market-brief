@@ -40,7 +40,7 @@ pass.
 **Learn**: Kotlin data classes, enums, value classes; parse-don't-validate;
 what a port (interface) buys you.
 
-## M2 — The pipeline with fakes
+## M2 — The pipeline with fakes ✅
 
 `GenerateDailyReport` end-to-end, driven entirely by in-memory fakes.
 

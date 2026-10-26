@@ -1,42 +1,31 @@
 # AGENTS.md — market-brief
 
-Kotlin service producing a daily summary of global investment-market news.
-
 ## Documents
 
-- `PRD.md` — the *what* (requirements, scope, eval loop).
-- `ARCHITECTURE.md` — the *how* (DDD layers, ports & adapters, seams).
-- `GLOSSARY.md` — canonical domain vocabulary.
+- `PRD.md` — requirements, scope, eval loop. Reach here for *what/why*
+  questions.
+- `ARCHITECTURE.md` — layers, ports & adapters, seams. Follow it for any code
+  change: dependency direction, pure domain, two adapters per port.
+- `GLOSSARY.md` — canonical domain vocabulary. Use its terms in code; avoid
+  its listed synonyms.
+- `MILESTONES.md` — implementation plan; work it in order.
 
-Read the doc matching your task before changing code; update it when your
-change alters what it describes.
-
-## Build & test
-
-- `./gradlew build` / `./gradlew test` / `./gradlew run`
-- Kotlin 2.4, JVM 25, Gradle wrapper 9.8.
+When your change alters what a doc describes, update that doc.
 
 ## Version pinning (upgrade rules)
 
-When upgrading toolchain or dependencies, respect these couplings:
+The couplings no config file confesses:
 
-- **Gradle ↔ Kotlin plugin**: the Kotlin Gradle plugin sets a minimum Gradle
-  version. Upgrade the two together and check the Kotlin–Gradle compatibility
-  matrix first. Verified combination: Gradle 9.8.2 + Kotlin 2.4.21 on JVM 25.
-  Gradle is pinned via `gradle-wrapper.properties`, Kotlin via the `plugins`
-  block — never use dynamic versions.
-- **`kotlinx-serialization-json`**: coupled to the Kotlin compiler version;
-  bump in lockstep with the Kotlin plugin, never independently.
-- **LangChain4j**: pin all `langchain4j*` modules to one version via the
-  `langchain4j-bom` so core, OpenAI, and structured-output modules cannot
-  drift apart.
-- **Ktor**: pinned via the single `ktorVersion` constant in
-  `build.gradle.kts`; keep it that way.
+- **Gradle ↔ Kotlin plugin**: the Kotlin plugin sets a minimum Gradle version.
+  Upgrade the two together against the Kotlin–Gradle compatibility matrix.
+  Verified combination: Gradle 9.8.2 + Kotlin 2.4.21 on JVM 25.
+- **`kotlinx-serialization-json`**: coupled to the Kotlin compiler; bump in
+  lockstep with the Kotlin plugin.
+- **LangChain4j**: align all `langchain4j*` modules via the `langchain4j-bom`.
+- **Ktor**: keep every module on the single `ktorVersion` constant.
 
-## Conventions
+## Comments
 
-- Dependencies point inward: domain → nothing, application → domain,
-  adapters → domain, http → application. Only `main` (composition root)
-  imports both application and adapters.
-- Domain is pure Kotlin: no framework or serialization annotations.
-- Every port has a production adapter plus a fallback/fake.
+Comment only what docs and code don't say: the non-obvious decision, the
+gotcha. Restatements of the docs above and narration of readable code go
+stale — delete them.
