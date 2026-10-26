@@ -269,7 +269,17 @@ Two seams carry the project's risk and are kept deliberately narrow:
 
 ---
 
-## 8. Design principles
+## 8. Tech stack
+
+As per PRD §9: **Kotlin + Ktor + LangChain4j**, HTML via `kotlinx.html`, JSON
+snapshots (no DB). LangChain4j provides the chat-model client (single
+OpenAI-compatible endpoint) and the **structured-output** machinery that maps
+article prose → typed `NewsItem` candidates inside
+`LangChain4jNewsItemExtractor` (§4).
+
+---
+
+## 9. Design principles
 
 1. **Dependencies point inward, and the graph is acyclic.** Domain has zero
    outward deps; application never imports the adapters layer.
