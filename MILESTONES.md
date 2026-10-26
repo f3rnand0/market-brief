@@ -22,7 +22,7 @@ test. **Done.**
 - *Learned*: Gradle Kotlin DSL, Ktor routing, `testApplication` (in-memory
   server tests).
 
-## M1 — Domain model
+## M1 — Domain model ✅
 
 The pure core: types + ports, nothing else.
 
