@@ -7,3 +7,7 @@ Extracting numbers from prose is the dominant source of hallucinated or
 unsupported values, which directly conflicts with the integrity goal. This
 departs from the original "extract everything from the web" framing, so it's
 recorded here.
+
+Sources for different asset classes are queried concurrently. When two sources
+cover the same instrument (Yahoo and CNBC both carry US 10Y), the primary wins
+and a fallback only fills a gap.

@@ -59,7 +59,7 @@ class CompositeMarketDataFetcherTest {
             override suspend fun quotes(instruments: Set<Instrument>): List<InstrumentQuote> {
                 if (started.incrementAndGet() == 2) allStarted.complete(Unit)
                 release.await()
-                return listOf(InstrumentQuote(instrument, BigDecimal.ONE, BigDecimal.ZERO))
+                return listOf(InstrumentQuote(instrument, BigDecimal.ONE, BigDecimal.ZERO, BigDecimal.ZERO))
             }
         }
 
@@ -84,7 +84,7 @@ class CompositeMarketDataFetcherTest {
         object : QuoteFetcher {
             override suspend fun quotes(instruments: Set<Instrument>): List<InstrumentQuote> =
                 if (instrument in instruments) {
-                    listOf(InstrumentQuote(instrument, BigDecimal(value), BigDecimal(change)))
+                    listOf(InstrumentQuote(instrument, BigDecimal(value), BigDecimal.ZERO, BigDecimal(change)))
                 } else {
                     emptyList()
                 }

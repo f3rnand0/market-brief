@@ -30,6 +30,8 @@ object ReportInstruments {
     val bitcoin = Instrument("Bitcoin", AssetClass.CRYPTO)
     val ethereum = Instrument("Ethereum", AssetClass.CRYPTO)
 
+    val summaryIndices: List<Instrument> = listOf(sp500, nasdaqComposite)
+
     val all: Set<Instrument> = linkedSetOf(
         sp500, nasdaqComposite, stoxxEurope600, ftse100, dax40, nikkei225,
         shanghaiComposite, hangSeng,

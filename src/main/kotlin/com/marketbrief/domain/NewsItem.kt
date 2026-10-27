@@ -42,5 +42,6 @@ data class NewsItem(
         require(cause == null || type == NewsItemType.MARKET_MOVE) {
             "Only MARKET_MOVE items may carry a cause"
         }
+        require(cause == null || cause.isNotBlank()) { "Cause must not be blank when present" }
     }
 }

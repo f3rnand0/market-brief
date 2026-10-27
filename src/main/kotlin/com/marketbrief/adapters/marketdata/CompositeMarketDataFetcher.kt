@@ -29,7 +29,7 @@ class CompositeMarketDataFetcher(
         for ((assetClass, perSource) in fallbackQuotes) {
             for (quotes in perSource) {
                 for (quote in quotes) {
-                    if (quote.instrument in instruments && quote.instrument.assetClass == assetClass) {
+                    if (quote.instrument.assetClass == assetClass) {
                         resolved.putIfAbsent(quote.instrument, quote)
                     }
                 }

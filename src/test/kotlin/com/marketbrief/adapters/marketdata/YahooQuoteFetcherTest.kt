@@ -25,7 +25,7 @@ class YahooQuoteFetcherTest {
         assertEquals(YahooSymbols.byInstrument.keys, quotes.keys)
         assertQuote(quotes, ReportInstruments.sp500, "6912.50", "0.61")
         assertQuote(quotes, ReportInstruments.nasdaqComposite, "23950.75", "-0.70")
-        assertQuote(quotes, ReportInstruments.us10y, "4.995", "0.18")
+        assertQuote(quotes, ReportInstruments.us10y, "4.995", "0.18", "0.009")
         assertQuote(quotes, ReportInstruments.eurUsd, "1.1642", "0.28")
         assertQuote(quotes, ReportInstruments.vix, "16.85", "-3.27")
         assertQuote(quotes, ReportInstruments.bitcoin, "112450.00", "1.49")

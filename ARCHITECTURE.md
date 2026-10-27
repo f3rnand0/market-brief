@@ -76,16 +76,18 @@ article:
 - `subjects` — the companies/tickers, sectors, indices, or asset classes the
   item is about
 - `assertion` — the claim, a single natural-language sentence
-- `direction` — UP / DOWN / FLAT (for moves)
+- `direction` — optional UP / DOWN / FLAT; typically set on moves
 - `cause` — optional free text on `MARKET_MOVE` items; must itself be
   source-backed
 - `metrics` — extracted numbers with units (e.g. "−1.2%", "$42B")
 - `source` — the article id + quote span(s) that support the assertion
   (**mandatory**; see ADR-0002)
 
-**`Snapshot`** is the structured market-numbers section, grouped by asset class
-(equities, fixed income, FX & volatility, commodities, crypto). Its numbers come
-from a market-data API — **never** from article prose (ADR-0001).
+**`Snapshot`** is the structured market-numbers data: a flat list of
+`InstrumentQuote`s, each tagged with an `Instrument` and its asset class
+(equities, fixed income, FX & volatility, commodities, crypto). The report
+groups quotes by asset class when rendered. Its numbers come from a market-data
+API — **never** from article prose (ADR-0001).
 
 **`Report`** is the assembled output document: the four sections built from a
 `Snapshot` plus the extracted `NewsItem`s.
@@ -123,7 +125,7 @@ report sections: regional grouping (US / China / Europe / Latam / Asia), the
 company/sector balance (US / China / Global, never US-only), and the summary's
 S&P + Nasdaq moves and causes.
 
-### 2.4 Ports (interfaces owned by the domain)
+### 2.5 Ports (interfaces owned by the domain)
 
 The seams where adapters plug in. The domain *declares* them;
 the adapters layer *implements* them.
@@ -156,11 +158,14 @@ Each seam is real (two adapters), not hypothetical:
 
 | Port                | Adapters                                                  |
 |---------------------|-----------------------------------------------------------|
-| `MarketDataFetcher`  | Yahoo primary + per-instrument-type fallbacks (composite)  |
+| `MarketDataFetcher`  | `CompositeMarketDataFetcher` (Yahoo primary + per-asset-class fallbacks) |
 | `NewsSource`        | `RssNewsSource`, `GdeltNewsSource`                        |
 | `NewsItemExtractor` | `LangChain4jNewsItemExtractor` + deterministic fake (tests/eval) |
 | `ReportStore`       | `JsonReportStore` + in-memory fake (tests)                |
 | `EvalStore`         | `JsonEvalStore` + in-memory fake (tests)              |
+
+`QuoteFetcher` is the adapters-internal seam: `YahooQuoteFetcher` and
+`CnbcQuoteFetcher` implement it; only the composite implements the domain port.
 
 `NewsItemExtractor` is the most important seam: the LangChain4j adapter
 implements it, and the structured-output investigation targets it directly
@@ -197,9 +202,11 @@ exposes an on-demand trigger.
 
 Concrete adapters implementing the domain ports.
 
-- **`YahooQuoteFetcher`** — primary free market-data source, behind a composite
-  adapter that applies **per-instrument-type fallbacks** (e.g. CNBC for non-US yields)
-  and can run **multiple sources concurrently** (ADR-0001).
+- **`YahooQuoteFetcher` / `CnbcQuoteFetcher`** — implement the internal
+  `QuoteFetcher` seam. `CompositeMarketDataFetcher` is the single
+  `MarketDataFetcher` adapter: Yahoo is primary, per-asset-class fallbacks (CNBC
+  for non-US yields) fill gaps, all sources are queried concurrently, and the
+  primary wins when two sources cover the same instrument (ADR-0001).
 - **`RssNewsSource` / `GdeltNewsSource`** — free news ingestion (Google News RSS
   / GDELT backbone + curated RSS list).
 - **`LangChain4jNewsItemExtractor`** — the LLM adapter. Uses a single

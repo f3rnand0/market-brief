@@ -69,8 +69,12 @@ internal fun assertQuote(
     instrument: Instrument,
     value: String,
     changePercent: String,
+    change: String? = null,
 ) {
     val quote = assertNotNull(quotes[instrument], "missing quote for ${instrument.name}")
     assertEquals(0, quote.value.compareTo(BigDecimal(value)), "value for ${instrument.name}")
     assertEquals(0, quote.changePercent.compareTo(BigDecimal(changePercent)), "change for ${instrument.name}")
+    if (change != null) {
+        assertEquals(0, quote.change.compareTo(BigDecimal(change)), "absolute change for ${instrument.name}")
+    }
 }

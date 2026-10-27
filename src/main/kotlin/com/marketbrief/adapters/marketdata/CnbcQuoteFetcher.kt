@@ -60,7 +60,9 @@ class CnbcQuoteFetcher(
             val instrument = bySymbol[quote.symbol] ?: return@mapNotNull null
             val latest = quote.last.asPercent() ?: return@mapNotNull null
             val previous = quote.previousClose.asPercent() ?: return@mapNotNull null
-            percentChange(previous, latest)?.let { InstrumentQuote(instrument, latest, it) }
+            percentChange(previous, latest)?.let {
+                InstrumentQuote(instrument, latest, latest.subtract(previous), it)
+            }
         }
 
     private fun String?.asPercent(): BigDecimal? =

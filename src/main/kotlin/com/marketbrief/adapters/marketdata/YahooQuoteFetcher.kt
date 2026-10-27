@@ -59,8 +59,8 @@ class YahooQuoteFetcher(
         val current = meta.regularMarketPrice ?: return null
         val previous = meta.chartPreviousClose ?: meta.previousClose ?: return null
         val price = BigDecimal.valueOf(current)
-        val change = percentChange(BigDecimal.valueOf(previous), price) ?: return null
-        return InstrumentQuote(instrument, price, change)
+        val changePercent = percentChange(BigDecimal.valueOf(previous), price) ?: return null
+        return InstrumentQuote(instrument, price, price.subtract(BigDecimal.valueOf(previous)), changePercent)
     }
 
     private companion object {

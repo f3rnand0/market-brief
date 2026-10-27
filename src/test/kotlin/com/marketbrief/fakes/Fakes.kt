@@ -16,7 +16,7 @@ import java.time.LocalDate
 
 class FakeMarketDataFetcher : MarketDataFetcher {
     override fun snapshot(instruments: Set<Instrument>): Snapshot =
-        Snapshot(instruments.map { InstrumentQuote(it, BigDecimal("100"), BigDecimal("1.0")) })
+        Snapshot(instruments.map { InstrumentQuote(it, BigDecimal("100"), BigDecimal("1.0"), BigDecimal("1.0")) })
 }
 
 class StaticCorpusNewsSource(private val articles: List<Article>) : NewsSource {

@@ -22,7 +22,7 @@ class CnbcQuoteFetcherTest {
         val quotes = cnbc.quotes(ReportInstruments.all).associateBy { it.instrument }
 
         assertEquals(CnbcSymbols.byInstrument.keys, quotes.keys)
-        assertQuote(quotes, ReportInstruments.us10y, "4.995", "0.18")
+        assertQuote(quotes, ReportInstruments.us10y, "4.995", "0.18", "0.009")
         assertQuote(quotes, ReportInstruments.germany10y, "3.3585", "0.09")
         assertQuote(quotes, ReportInstruments.france10y, "4.9236", "0.32")
         assertQuote(quotes, ReportInstruments.uk10y, "5.3496", "0.13")

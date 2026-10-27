@@ -43,6 +43,19 @@ class ReportAssemblerTest {
     }
 
     @Test
+    fun `company-sector section never exceeds its limit`() {
+        val items = buildList {
+            repeat(4) { add(item(type = NewsItemType.COMPANY, region = Region.US, subject = "US $it")) }
+            repeat(4) { add(item(type = NewsItemType.COMPANY, region = Region.CHINA, subject = "China $it")) }
+            repeat(4) { add(item(type = NewsItemType.SECTOR, region = Region.GLOBAL, subject = "Global $it")) }
+        }
+
+        val section = ReportAssembler.assemble(date, snapshot, items).companySectorNews
+
+        assertEquals(10, section.size)
+    }
+
+    @Test
     fun `summary leads with S&P and Nasdaq moves and their causes`() {
         val items = listOf(
             item(

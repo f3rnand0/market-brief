@@ -96,9 +96,17 @@ Expose the pipeline over HTTP and persist reports.
 
 - `JsonReportStore` (JSON snapshots to disk; round-trip test).
 - HTTP DTOs + mapping (never serialize domain directly, ARCHITECTURE.md §5).
+- **Snapshot rendering**: group quotes by asset class in the JSON/HTML layer
+  (`Snapshot` stays a flat list; each quote carries `instrument.assetClass`).
+  `InstrumentQuote` carries the absolute day change, so fixed income renders
+  `4.995 (+0.9 bp, +0.18%)`; other asset classes render value plus percent.
 - Endpoints: `POST /report/generate`, `GET /report/{date}`,
   `GET /report/{date}.html` (kotlinx.html rendering).
 - `testApplication` tests for each endpoint, wired with M2 fakes.
+- **Snapshot completeness policy** (prune review Q-4): decide whether a missing
+  instrument fails generation, travels as an explicit `missing` set, or is
+  accepted silently. Record the decision in an ADR and cover it with a
+  composite test.
 
 **Done when**: tests generate a report through HTTP and read it back as JSON
 and HTML; `./gradlew run` serves a real generated report (fakes + M3/M4

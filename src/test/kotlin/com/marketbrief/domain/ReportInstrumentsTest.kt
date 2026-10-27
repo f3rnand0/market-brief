@@ -18,13 +18,4 @@ class ReportInstrumentsTest {
             ReportInstruments.all.groupingBy { it.assetClass }.eachCount(),
         )
     }
-
-    @Test
-    fun `summary index names match the catalog`() {
-        val names = ReportInstruments.all.map { it.name }
-        assertEquals(
-            listOf("S&P 500", "Nasdaq Composite"),
-            names.filter { it == "S&P 500" || it == "Nasdaq Composite" },
-        )
-    }
 }

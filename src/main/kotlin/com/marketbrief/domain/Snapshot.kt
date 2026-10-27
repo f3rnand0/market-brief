@@ -13,6 +13,7 @@ data class Instrument(val name: String, val assetClass: AssetClass) {
 data class InstrumentQuote(
     val instrument: Instrument,
     val value: BigDecimal,
+    val change: BigDecimal,
     val changePercent: BigDecimal,
 )
 

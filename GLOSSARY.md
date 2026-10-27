@@ -11,9 +11,26 @@ _Avoid_: digest, bulletin
 
 **Snapshot**:
 The structured report section that lists market numbers and day-over-day
-percentages by asset class. Numbers come from a market-data API, never from
-article prose.
+changes by asset class. Numbers come from a market-data API, never from
+article prose. In the domain, `Snapshot` is a flat list of `InstrumentQuote`s;
+grouping by asset class happens at render time.
 _Avoid_: market data (that's the raw input, not the section)
+
+**Instrument**:
+One market number tracked in the snapshot: a display name and an asset class
+(e.g. "US 10Y", "S&P 500"). Adapters map an `Instrument` to their own ticker
+symbol.
+_Avoid_: ticker, symbol
+
+**AssetClass**:
+The grouping of an `Instrument` in the snapshot: equities, fixed income, FX &
+volatility, commodities, or crypto.
+
+**InstrumentQuote**:
+An `Instrument`'s latest value with its absolute day change and percentage
+change. Fixed income renders the change in basis points and percent; other
+asset classes render the percentage change.
+_Avoid_: price (a yield is not a price)
 
 **NewsItem**:
 The typed unit of information extracted from an article: a single market move,

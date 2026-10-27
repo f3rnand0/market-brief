@@ -46,9 +46,11 @@ polish.
 
 1. **Brief summary** — S&P 500 and Nasdaq Composite moves (and their cause),
    plus other important news. LLM prose; every claim cited.
-2. **Market snapshot** — numbers and day-over-day percentages for the
-   instrument set, grouped by asset class. Fully structured, sourced from the
-   market-data API (no LLM).
+2. **Market snapshot** — numbers and day-over-day changes for the instrument
+   set, grouped by asset class when rendered. Fixed income shows the latest
+   yield with the daily move in basis points and percent
+   (`4.995 (+0.9 bp, +0.18%)`); other asset classes show the percentage change.
+   Fully structured, sourced from the market-data API (no LLM).
 3. **Regional news** — the most relevant market news per continent: US, China,
    Europe, Latam, Asia.
 4. **Company / sector news** — the most relevant news about the biggest

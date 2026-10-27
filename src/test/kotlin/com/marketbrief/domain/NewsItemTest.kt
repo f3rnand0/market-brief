@@ -56,6 +56,11 @@ class NewsItemTest {
     }
 
     @Test
+    fun `blank cause is rejected`() {
+        assertFailsWith<IllegalArgumentException> { item(cause = "  ") }
+    }
+
+    @Test
     fun `metric requires value and unit`() {
         assertFailsWith<IllegalArgumentException> { Metric("", "%") }
         assertFailsWith<IllegalArgumentException> { Metric("-1.2", "") }
