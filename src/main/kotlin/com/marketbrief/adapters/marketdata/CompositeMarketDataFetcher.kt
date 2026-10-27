@@ -7,14 +7,14 @@ import com.marketbrief.domain.MarketDataFetcher
 import com.marketbrief.domain.Snapshot
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.runBlocking
+import org.slf4j.LoggerFactory
 
 class CompositeMarketDataFetcher(
     private val primary: QuoteFetcher,
     private val fallbacks: Map<AssetClass, List<QuoteFetcher>>,
 ) : MarketDataFetcher {
 
-    override fun snapshot(instruments: Set<Instrument>): Snapshot = runBlocking {
+    override suspend fun snapshot(instruments: Set<Instrument>): Snapshot {
         val (primaryQuotes, fallbackQuotes) = coroutineScope {
             val primaryDeferred = async { primary.quotes(instruments) }
             val fallbackDeferred = fallbacks.mapValues { (assetClass, sources) ->
@@ -36,6 +36,20 @@ class CompositeMarketDataFetcher(
             }
         }
 
-        Snapshot(instruments.mapNotNull(resolved::get))
+        val quotes = instruments.mapNotNull(resolved::get)
+        if (quotes.size < instruments.size) {
+            val missing = instruments - quotes.mapTo(mutableSetOf()) { it.instrument }
+            log.warn(
+                "Market snapshot incomplete: resolved {} of {} instruments; missing {}",
+                quotes.size,
+                instruments.size,
+                missing.joinToString { it.name },
+            )
+        }
+        return Snapshot(quotes)
+    }
+
+    private companion object {
+        val log = LoggerFactory.getLogger(CompositeMarketDataFetcher::class.java)
     }
 }

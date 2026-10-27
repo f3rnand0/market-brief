@@ -44,8 +44,9 @@ polish.
 
 ### 5.1 The four sections
 
-1. **Brief summary** — S&P 500 and Nasdaq Composite moves (and their cause),
-   plus other important news. LLM prose; every claim cited.
+1. **Brief summary** — S&P 500 and Nasdaq Composite levels and moves (and their
+   cause), plus other important news. Levels and moves come from the snapshot;
+   the cause is cited LLM prose.
 2. **Market snapshot** — numbers and day-over-day changes for the instrument
    set, grouped by asset class when rendered. Fixed income shows the latest
    yield with the daily move in basis points and percent

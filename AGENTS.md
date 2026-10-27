@@ -23,6 +23,9 @@ The couplings no config file confesses:
   lockstep with the Kotlin plugin.
 - **LangChain4j**: align all `langchain4j*` modules via the `langchain4j-bom`.
 - **Ktor**: keep every module on the single `ktorVersion` constant.
+- **Direct dependencies**: declare the libraries the source imports directly
+  (coroutines, SLF4J) instead of relying on transitive versions. Verified:
+  `kotlinx-coroutines-core` 1.11.0, `slf4j-api` 2.0.19.
 
 ## Naming
 

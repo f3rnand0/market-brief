@@ -2,6 +2,7 @@ package com.marketbrief.domain
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 
 class ReportInstrumentsTest {
 
@@ -17,5 +18,15 @@ class ReportInstrumentsTest {
             ),
             ReportInstruments.all.groupingBy { it.assetClass }.eachCount(),
         )
+    }
+
+    @Test
+    fun `summary index aliases match common subject names`() {
+        assertEquals(ReportInstruments.sp500, ReportInstruments.summaryInstrumentFor("S&P500"))
+        assertEquals(ReportInstruments.sp500, ReportInstruments.summaryInstrumentFor("S&P 500 Index"))
+        assertEquals(ReportInstruments.sp500, ReportInstruments.summaryInstrumentFor("^GSPC"))
+        assertEquals(ReportInstruments.nasdaqComposite, ReportInstruments.summaryInstrumentFor("Nasdaq"))
+        assertEquals(ReportInstruments.nasdaqComposite, ReportInstruments.summaryInstrumentFor("^IXIC"))
+        assertNull(ReportInstruments.summaryInstrumentFor("Apple"))
     }
 }

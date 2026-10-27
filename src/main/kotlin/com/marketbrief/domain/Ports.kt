@@ -5,7 +5,7 @@ import java.time.LocalDate
 data class DayWindow(val date: LocalDate)
 
 interface MarketDataFetcher {
-    fun snapshot(instruments: Set<Instrument>): Snapshot
+    suspend fun snapshot(instruments: Set<Instrument>): Snapshot
 }
 
 interface NewsSource {

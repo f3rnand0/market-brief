@@ -4,6 +4,7 @@ import com.marketbrief.domain.ReportInstruments
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
+import io.ktor.client.request.HttpRequestData
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
@@ -30,6 +31,21 @@ class YahooQuoteFetcherTest {
         assertQuote(quotes, ReportInstruments.vix, "16.85", "-3.27")
         assertQuote(quotes, ReportInstruments.bitcoin, "112450.00", "1.49")
         assertQuote(quotes, ReportInstruments.ethereum, "4085.50", "-0.86")
+    }
+
+    @Test
+    fun `requests the chart endpoint with the expected query and user agent`() = runBlocking {
+        val requests = mutableListOf<HttpRequestData>()
+        val fetcher = YahooQuoteFetcher(QuoteFixtures.yahooClient(requests))
+
+        fetcher.quotes(setOf(ReportInstruments.sp500))
+
+        val request = requests.single()
+        assertEquals("query1.finance.yahoo.com", request.url.host)
+        assertEquals("^GSPC", request.url.encodedPath.substringAfterLast('/').decodeURLPart())
+        assertEquals("1d", request.url.parameters["range"])
+        assertEquals("1d", request.url.parameters["interval"])
+        assertEquals("Mozilla/5.0 (compatible; market-brief/0.1)", request.headers[HttpHeaders.UserAgent])
     }
 
     @Test

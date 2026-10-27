@@ -17,7 +17,7 @@ class GenerateDailyReport(
     private val reportStore: ReportStore,
     private val instruments: Set<Instrument>,
 ) {
-    fun generate(date: LocalDate): Report {
+    suspend fun generate(date: LocalDate): Report {
         val snapshot = marketDataFetcher.snapshot(instruments)
         val articles = newsSource.fetch(DayWindow(date))
         val items = articles.flatMap(extractor::extract)

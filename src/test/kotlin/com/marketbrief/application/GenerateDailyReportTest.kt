@@ -10,6 +10,7 @@ import com.marketbrief.fakes.DeterministicNewsItemExtractor
 import com.marketbrief.fakes.FakeMarketDataFetcher
 import com.marketbrief.fakes.InMemoryReportStore
 import com.marketbrief.fakes.StaticCorpusNewsSource
+import kotlinx.coroutines.runBlocking
 import java.time.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -21,7 +22,7 @@ class GenerateDailyReportTest {
     private val instruments = setOf(Instrument("S&P 500", AssetClass.EQUITIES))
 
     @Test
-    fun `pipeline assembles snapshot plus extracted items and saves the report`() {
+    fun `pipeline assembles snapshot plus extracted items and saves the report`() = runBlocking {
         val corpus = listOf(article("a1"), article("a2"))
         val extracted = mapOf(
             "a1" to listOf(item(type = NewsItemType.COMPANY, region = Region.US, subject = "Apple")),

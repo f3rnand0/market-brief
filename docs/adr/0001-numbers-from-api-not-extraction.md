@@ -4,9 +4,10 @@ The report's snapshot and index moves need numbers (levels, percentages). We
 fetch them from a free market-data API (Yahoo Finance primary, with
 per-instrument-type fallbacks) and never parse them out of article prose.
 Extracting numbers from prose is the dominant source of hallucinated or
-unsupported values, which directly conflicts with the integrity goal. This
-departs from the original "extract everything from the web" framing, so it's
-recorded here.
+unsupported values, which directly conflicts with the integrity goal. The
+summary's index levels and moves therefore come from the `Snapshot`; prose
+contributes only the cause. This departs from the original "extract everything
+from the web" framing, so it's recorded here.
 
 Sources for different asset classes are queried concurrently. When two sources
 cover the same instrument (Yahoo and CNBC both carry US 10Y), the primary wins

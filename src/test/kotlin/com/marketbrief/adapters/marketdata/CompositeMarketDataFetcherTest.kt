@@ -17,7 +17,7 @@ import kotlin.test.assertEquals
 class CompositeMarketDataFetcherTest {
 
     @Test
-    fun `snapshot covers every configured instrument from primary plus fallback fixtures`() {
+    fun `snapshot covers every configured instrument from primary plus fallback fixtures`() = runBlocking {
         val composite = CompositeMarketDataFetcher(
             primary = YahooQuoteFetcher(QuoteFixtures.yahooClient()),
             fallbacks = mapOf(
@@ -37,7 +37,7 @@ class CompositeMarketDataFetcherTest {
     }
 
     @Test
-    fun `primary quote wins over a fallback quote for the same instrument`() {
+    fun `primary quote wins over a fallback quote for the same instrument`() = runBlocking {
         val instrument = ReportInstruments.us10y
         val composite = CompositeMarketDataFetcher(
             primary = fetcherOf(instrument, "4.20", "3.70"),
@@ -80,11 +80,25 @@ class CompositeMarketDataFetcherTest {
         }
     }
 
-    private fun fetcherOf(instrument: Instrument, value: String, change: String): QuoteFetcher =
+    @Test
+    fun `unresolved instruments are omitted from the snapshot`() = runBlocking {
+        val composite = CompositeMarketDataFetcher(
+            primary = fetcherOf(ReportInstruments.sp500, "100", "1.00"),
+            fallbacks = emptyMap(),
+        )
+
+        val snapshot = composite.snapshot(setOf(ReportInstruments.sp500, ReportInstruments.nasdaqComposite))
+
+        assertEquals(setOf(ReportInstruments.sp500), snapshot.quotes.map { it.instrument }.toSet())
+    }
+
+    private fun fetcherOf(instrument: Instrument, value: String, changePercent: String): QuoteFetcher =
         object : QuoteFetcher {
             override suspend fun quotes(instruments: Set<Instrument>): List<InstrumentQuote> =
                 if (instrument in instruments) {
-                    listOf(InstrumentQuote(instrument, BigDecimal(value), BigDecimal.ZERO, BigDecimal(change)))
+                    listOf(
+                        InstrumentQuote(instrument, BigDecimal(value), BigDecimal.ZERO, BigDecimal(changePercent)),
+                    )
                 } else {
                     emptyList()
                 }

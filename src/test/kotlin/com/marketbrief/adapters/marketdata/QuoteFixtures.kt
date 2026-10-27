@@ -5,6 +5,7 @@ import com.marketbrief.domain.InstrumentQuote
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
+import io.ktor.client.request.HttpRequestData
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
@@ -23,9 +24,10 @@ object QuoteFixtures {
         .parseToJsonElement(resource("/fixtures/yahoo/chart-quotes.json"))
         .jsonObject
 
-    fun yahooClient(): HttpClient = HttpClient(MockEngine) {
+    fun yahooClient(requests: MutableList<HttpRequestData>? = null): HttpClient = HttpClient(MockEngine) {
         engine {
             addHandler { request ->
+                requests?.add(request)
                 val symbol = request.url.encodedPath
                     .substringAfter("/v8/finance/chart/")
                     .decodeURLPart()
@@ -43,9 +45,10 @@ object QuoteFixtures {
         }
     }
 
-    fun cnbcClient(): HttpClient = HttpClient(MockEngine) {
+    fun cnbcClient(requests: MutableList<HttpRequestData>? = null): HttpClient = HttpClient(MockEngine) {
         engine {
-            addHandler {
+            addHandler { request ->
+                requests?.add(request)
                 respond(
                     resource("/fixtures/cnbc/quotes.json"),
                     HttpStatusCode.OK,
@@ -69,12 +72,12 @@ internal fun assertQuote(
     instrument: Instrument,
     value: String,
     changePercent: String,
-    change: String? = null,
+    absoluteChange: String? = null,
 ) {
     val quote = assertNotNull(quotes[instrument], "missing quote for ${instrument.name}")
     assertEquals(0, quote.value.compareTo(BigDecimal(value)), "value for ${instrument.name}")
-    assertEquals(0, quote.changePercent.compareTo(BigDecimal(changePercent)), "change for ${instrument.name}")
-    if (change != null) {
-        assertEquals(0, quote.change.compareTo(BigDecimal(change)), "absolute change for ${instrument.name}")
+    assertEquals(0, quote.changePercent.compareTo(BigDecimal(changePercent)), "percent change for ${instrument.name}")
+    if (absoluteChange != null) {
+        assertEquals(0, quote.change.compareTo(BigDecimal(absoluteChange)), "absolute change for ${instrument.name}")
     }
 }

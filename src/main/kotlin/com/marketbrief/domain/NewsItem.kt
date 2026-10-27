@@ -38,6 +38,7 @@ data class NewsItem(
     val source: Source,
 ) {
     init {
+        require(subjects.isNotEmpty()) { "NewsItem must name at least one subject" }
         require(assertion.isNotBlank()) { "Assertion must not be blank" }
         require(cause == null || type == NewsItemType.MARKET_MOVE) {
             "Only MARKET_MOVE items may carry a cause"

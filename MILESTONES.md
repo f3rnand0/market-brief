@@ -149,6 +149,11 @@ Replace the static corpus with real free sources.
 
 - `RssNewsSource` (Google News RSS + curated outlet list) and
   `GdeltNewsSource` behind the `NewsSource` port; dedupe across sources.
+- **Regional section selection** (code-review item 8): rank each region by
+  article publication date via `Source.articleId`, cap the section, cap per
+  outlet, and dedupe by event key. Document the policy in ARCHITECTURE §2.4
+  and PRD §5.1. Add a 50-item corpus test for per-region cap, stable order,
+  dedupe, and `GLOBAL` exclusion.
 - Fixture-backed parsing tests (recorded RSS/XML); a manual smoke run
   against the live feeds.
 

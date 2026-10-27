@@ -32,6 +32,21 @@ object ReportInstruments {
 
     val summaryIndices: List<Instrument> = listOf(sp500, nasdaqComposite)
 
+    private val summaryIndexAliases: Map<Instrument, Set<String>> = mapOf(
+        sp500 to setOf("S&P 500", "S&P500", "S&P 500 Index", "^GSPC"),
+        nasdaqComposite to setOf("Nasdaq Composite", "Nasdaq", "Nasdaq Comp", "^IXIC"),
+    )
+
+    fun summaryInstrumentFor(subjectName: String): Instrument? {
+        val normalized = normalize(subjectName)
+        return summaryIndexAliases.entries
+            .firstOrNull { (_, aliases) -> aliases.any { normalize(it) == normalized } }
+            ?.key
+    }
+
+    private fun normalize(name: String): String =
+        name.lowercase().filter { it.isLetterOrDigit() }
+
     val all: Set<Instrument> = linkedSetOf(
         sp500, nasdaqComposite, stoxxEurope600, ftse100, dax40, nikkei225,
         shanghaiComposite, hangSeng,

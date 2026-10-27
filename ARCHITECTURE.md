@@ -122,8 +122,11 @@ invariant holds for every current and future caller (pipeline, eval, tests).
 
 Section assembly defines how validated `NewsItem`s map to the four
 report sections: regional grouping (US / China / Europe / Latam / Asia), the
-company/sector balance (US / China / Global, never US-only), and the summary's
-S&P + Nasdaq moves and causes.
+company/sector balance (US / China / Global, never US-only), and the summary.
+The summary's S&P 500 and Nasdaq Composite levels and moves come from the
+`Snapshot`; causes come from matching `MARKET_MOVE` items through the
+domain-owned index aliases (`ReportInstruments.summaryInstrumentFor`). One
+sentence per index. Regional ranking, capping, and dedupe are scheduled in M8.
 
 ### 2.5 Ports (interfaces owned by the domain)
 
@@ -132,7 +135,7 @@ the adapters layer *implements* them.
 
 ```kotlin
 interface MarketDataFetcher {                     // free market-data sources (ADR-0001)
-    fun snapshot(instruments: Set<Instrument>): Snapshot
+    suspend fun snapshot(instruments: Set<Instrument>): Snapshot
 }
 
 interface NewsSource {                     // free news ingestion
@@ -192,6 +195,9 @@ hides the whole orchestration. Tests cross the same seam as callers — the use
 case is driven with in-memory port fakes, never by reaching past the
 interface.
 
+`GenerateDailyReport.generate` is `suspend`: the `MarketDataFetcher` port is
+suspending, and the HTTP layer calls the use case from its request coroutine.
+
 A scheduler (wired in the composition root, not part of the use case) triggers
 `GenerateDailyReport` at 09:00 Europe/Berlin (CET/CEST aware); the PoC also
 exposes an on-demand trigger.
@@ -206,7 +212,10 @@ Concrete adapters implementing the domain ports.
   `QuoteFetcher` seam. `CompositeMarketDataFetcher` is the single
   `MarketDataFetcher` adapter: Yahoo is primary, per-asset-class fallbacks (CNBC
   for non-US yields) fill gaps, all sources are queried concurrently, and the
-  primary wins when two sources cover the same instrument (ADR-0001).
+  primary wins when two sources cover the same instrument (ADR-0001). Requests
+  are bounded at 15 seconds; CNBC decodes each quote independently so one
+  malformed element does not discard the batch. The composite logs when it
+  resolves fewer instruments than requested.
 - **`RssNewsSource` / `GdeltNewsSource`** — free news ingestion (Google News RSS
   / GDELT backbone + curated RSS list).
 - **`LangChain4jNewsItemExtractor`** — the LLM adapter. Uses a single

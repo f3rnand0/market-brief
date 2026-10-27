@@ -42,6 +42,13 @@ class NewsItemTest {
     }
 
     @Test
+    fun `item without subjects is rejected`() {
+        assertFailsWith<IllegalArgumentException> {
+            item().copy(subjects = emptyList())
+        }
+    }
+
+    @Test
     fun `blank assertion is rejected`() {
         assertFailsWith<IllegalArgumentException> {
             item().copy(assertion = "")

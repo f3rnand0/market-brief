@@ -12,9 +12,11 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.appendPathSegments
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
@@ -35,18 +37,23 @@ class YahooQuoteFetcher(
     }
 
     private suspend fun quote(instrument: Instrument, symbol: String): InstrumentQuote? = try {
-        val response = client.get("$baseUrl/v8/finance/chart") {
-            url { appendPathSegments(symbol) }
-            header(HttpHeaders.UserAgent, "Mozilla/5.0 (compatible; market-brief/0.1)")
-            parameter("range", "1d")
-            parameter("interval", "1d")
-        }
-        if (!response.status.isSuccess()) {
-            log.debug("Yahoo returned {} for {}", response.status, symbol)
-            null
-        } else {
-            toQuote(instrument, json.decodeFromString<YahooChartResponse>(response.bodyAsText()))
-        }
+        val body = withTimeout(REQUEST_TIMEOUT_MILLIS) {
+            val response = client.get("$baseUrl/v8/finance/chart") {
+                url { appendPathSegments(symbol) }
+                header(HttpHeaders.UserAgent, "Mozilla/5.0 (compatible; market-brief/0.1)")
+                parameter("range", "1d")
+                parameter("interval", "1d")
+            }
+            if (!response.status.isSuccess()) {
+                log.debug("Yahoo returned {} for {}", response.status, symbol)
+                return@withTimeout null
+            }
+            response.bodyAsText()
+        } ?: return null
+        toQuote(instrument, json.decodeFromString<YahooChartResponse>(body))
+    } catch (e: TimeoutCancellationException) {
+        log.warn("Yahoo request timed out for {}", symbol)
+        null
     } catch (e: CancellationException) {
         throw e
     } catch (e: Exception) {
@@ -64,6 +71,7 @@ class YahooQuoteFetcher(
     }
 
     private companion object {
+        const val REQUEST_TIMEOUT_MILLIS = 15_000L
         val log = LoggerFactory.getLogger(YahooQuoteFetcher::class.java)
     }
 }

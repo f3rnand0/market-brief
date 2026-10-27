@@ -15,7 +15,7 @@ import java.math.BigDecimal
 import java.time.LocalDate
 
 class FakeMarketDataFetcher : MarketDataFetcher {
-    override fun snapshot(instruments: Set<Instrument>): Snapshot =
+    override suspend fun snapshot(instruments: Set<Instrument>): Snapshot =
         Snapshot(instruments.map { InstrumentQuote(it, BigDecimal("100"), BigDecimal("1.0"), BigDecimal("1.0")) })
 }
 

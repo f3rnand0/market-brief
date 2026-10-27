@@ -10,9 +10,14 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpHeaders
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
 import org.slf4j.LoggerFactory
 import java.math.BigDecimal
 
@@ -30,20 +35,25 @@ class CnbcQuoteFetcher(
         if (bySymbol.isEmpty()) return emptyList()
 
         return try {
-            val response = client.get("$baseUrl/quote-html-webservice/restQuote/symbolType/symbol") {
-                header(HttpHeaders.UserAgent, "Mozilla/5.0 (compatible; market-brief/0.1)")
-                parameter("symbols", bySymbol.keys.joinToString("|"))
-                parameter("requestMethod", "itv")
-                parameter("noform", "1")
-                parameter("partnerId", "2")
-                parameter("output", "json")
-            }
-            if (!response.status.isSuccess()) {
-                log.debug("CNBC returned {} for {}", response.status, bySymbol.keys)
-                emptyList()
-            } else {
-                toQuotes(json.decodeFromString<CnbcQuoteResponse>(response.bodyAsText()), bySymbol)
-            }
+            val body = withTimeout(REQUEST_TIMEOUT_MILLIS) {
+                val response = client.get("$baseUrl/quote-html-webservice/restQuote/symbolType/symbol") {
+                    header(HttpHeaders.UserAgent, "Mozilla/5.0 (compatible; market-brief/0.1)")
+                    parameter("symbols", bySymbol.keys.joinToString("|"))
+                    parameter("requestMethod", "itv")
+                    parameter("noform", "1")
+                    parameter("partnerId", "2")
+                    parameter("output", "json")
+                }
+                if (!response.status.isSuccess()) {
+                    log.debug("CNBC returned {} for {}", response.status, bySymbol.keys)
+                    return@withTimeout null
+                }
+                response.bodyAsText()
+            } ?: return emptyList()
+            parseQuotes(body, bySymbol)
+        } catch (e: TimeoutCancellationException) {
+            log.warn("CNBC request timed out for {}", bySymbol.keys)
+            emptyList()
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -52,36 +62,50 @@ class CnbcQuoteFetcher(
         }
     }
 
-    private fun toQuotes(
-        response: CnbcQuoteResponse,
-        bySymbol: Map<String, Instrument>,
-    ): List<InstrumentQuote> =
-        response.result?.quotes.orEmpty().mapNotNull { quote ->
-            val instrument = bySymbol[quote.symbol] ?: return@mapNotNull null
-            val latest = quote.last.asPercent() ?: return@mapNotNull null
-            val previous = quote.previousClose.asPercent() ?: return@mapNotNull null
-            percentChange(previous, latest)?.let {
-                InstrumentQuote(instrument, latest, latest.subtract(previous), it)
-            }
+    private fun parseQuotes(body: String, bySymbol: Map<String, Instrument>): List<InstrumentQuote> {
+        val root = try {
+            json.parseToJsonElement(body).jsonObject
+        } catch (e: Exception) {
+            log.warn("CNBC returned malformed JSON", e)
+            return emptyList()
         }
+        val rawQuotes = try {
+            root["FormattedQuoteResult"]
+                ?.jsonObject
+                ?.get("FormattedQuote")
+                ?.jsonArray
+        } catch (e: Exception) {
+            log.warn("CNBC returned an unexpected payload shape", e)
+            return emptyList()
+        } ?: return emptyList()
+        return rawQuotes.mapNotNull { element ->
+            val quote = try {
+                json.decodeFromJsonElement<CnbcQuote>(element)
+            } catch (e: Exception) {
+                log.warn("Skipping malformed CNBC quote", e)
+                return@mapNotNull null
+            }
+            toQuote(quote, bySymbol)
+        }
+    }
+
+    private fun toQuote(quote: CnbcQuote, bySymbol: Map<String, Instrument>): InstrumentQuote? {
+        val instrument = bySymbol[quote.symbol] ?: return null
+        val latest = quote.last.asPercent() ?: return null
+        val previous = quote.previousClose.asPercent() ?: return null
+        return percentChange(previous, latest)?.let {
+            InstrumentQuote(instrument, latest, latest.subtract(previous), it)
+        }
+    }
 
     private fun String?.asPercent(): BigDecimal? =
         this?.removeSuffix("%")?.trim()?.toBigDecimalOrNull()
 
     private companion object {
+        const val REQUEST_TIMEOUT_MILLIS = 15_000L
         val log = LoggerFactory.getLogger(CnbcQuoteFetcher::class.java)
     }
 }
-
-@Serializable
-private data class CnbcQuoteResponse(
-    @SerialName("FormattedQuoteResult") val result: CnbcQuoteResult? = null,
-)
-
-@Serializable
-private data class CnbcQuoteResult(
-    @SerialName("FormattedQuote") val quotes: List<CnbcQuote> = emptyList(),
-)
 
 @Serializable
 private data class CnbcQuote(
