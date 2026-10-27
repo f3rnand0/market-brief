@@ -24,6 +24,16 @@ The couplings no config file confesses:
 - **LangChain4j**: align all `langchain4j*` modules via the `langchain4j-bom`.
 - **Ktor**: keep every module on the single `ktorVersion` constant.
 
+## Naming
+
+Class and interface names are noun phrases. A collaborator that performs an
+action takes an agent noun — `MarketDataFetcher`, `JsonReportStore`,
+`RssNewsSource` — and the verb belongs to its method: `snapshot()`, `fetch()`,
+`extract()`. Use cases are the one imperative: `GenerateDailyReport` names the
+step the agent takes.
+
+`*Data` names a record (a Kotlin `data class`), not a collaborator.
+
 ## Comments
 
 Comment only what docs and code don't say: the non-obvious decision, the

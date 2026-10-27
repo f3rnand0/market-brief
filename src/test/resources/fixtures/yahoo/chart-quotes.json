@@ -1,0 +1,287 @@
+{
+  "^GSPC": {
+    "chart": {
+      "result": [
+        {
+          "meta": {
+            "currency": "USD",
+            "symbol": "^GSPC",
+            "regularMarketPrice": 6912.50,
+            "chartPreviousClose": 6870.25
+          }
+        }
+      ],
+      "error": null
+    }
+  },
+  "^IXIC": {
+    "chart": {
+      "result": [
+        {
+          "meta": {
+            "currency": "USD",
+            "symbol": "^IXIC",
+            "regularMarketPrice": 23950.75,
+            "chartPreviousClose": 24120.00
+          }
+        }
+      ],
+      "error": null
+    }
+  },
+  "^STOXX": {
+    "chart": {
+      "result": [
+        {
+          "meta": {
+            "currency": "EUR",
+            "symbol": "^STOXX",
+            "regularMarketPrice": 578.30,
+            "chartPreviousClose": 574.10
+          }
+        }
+      ],
+      "error": null
+    }
+  },
+  "^FTSE": {
+    "chart": {
+      "result": [
+        {
+          "meta": {
+            "currency": "GBP",
+            "symbol": "^FTSE",
+            "regularMarketPrice": 9420.60,
+            "chartPreviousClose": 9385.20
+          }
+        }
+      ],
+      "error": null
+    }
+  },
+  "^GDAXI": {
+    "chart": {
+      "result": [
+        {
+          "meta": {
+            "currency": "EUR",
+            "symbol": "^GDAXI",
+            "regularMarketPrice": 24310.40,
+            "chartPreviousClose": 24175.90
+          }
+        }
+      ],
+      "error": null
+    }
+  },
+  "^N225": {
+    "chart": {
+      "result": [
+        {
+          "meta": {
+            "currency": "JPY",
+            "symbol": "^N225",
+            "regularMarketPrice": 50120.30,
+            "chartPreviousClose": 49680.00
+          }
+        }
+      ],
+      "error": null
+    }
+  },
+  "000001.SS": {
+    "chart": {
+      "result": [
+        {
+          "meta": {
+            "currency": "CNY",
+            "symbol": "000001.SS",
+            "regularMarketPrice": 3985.20,
+            "chartPreviousClose": 3960.10
+          }
+        }
+      ],
+      "error": null
+    }
+  },
+  "^HSI": {
+    "chart": {
+      "result": [
+        {
+          "meta": {
+            "currency": "HKD",
+            "symbol": "^HSI",
+            "regularMarketPrice": 26480.50,
+            "chartPreviousClose": 26195.80
+          }
+        }
+      ],
+      "error": null
+    }
+  },
+  "^TNX": {
+    "chart": {
+      "result": [
+        {
+          "meta": {
+            "currency": "USD",
+            "symbol": "^TNX",
+            "regularMarketPrice": 4.995,
+            "chartPreviousClose": 4.986
+          }
+        }
+      ],
+      "error": null
+    }
+  },
+  "EURUSD=X": {
+    "chart": {
+      "result": [
+        {
+          "meta": {
+            "currency": "USD",
+            "symbol": "EURUSD=X",
+            "regularMarketPrice": 1.1642,
+            "chartPreviousClose": 1.1610
+          }
+        }
+      ],
+      "error": null
+    }
+  },
+  "CNY=X": {
+    "chart": {
+      "result": [
+        {
+          "meta": {
+            "currency": "CNY",
+            "symbol": "CNY=X",
+            "regularMarketPrice": 7.1180,
+            "chartPreviousClose": 7.1250
+          }
+        }
+      ],
+      "error": null
+    }
+  },
+  "^VIX": {
+    "chart": {
+      "result": [
+        {
+          "meta": {
+            "currency": "USD",
+            "symbol": "^VIX",
+            "regularMarketPrice": 16.85,
+            "chartPreviousClose": 17.42
+          }
+        }
+      ],
+      "error": null
+    }
+  },
+  "GC=F": {
+    "chart": {
+      "result": [
+        {
+          "meta": {
+            "currency": "USD",
+            "symbol": "GC=F",
+            "regularMarketPrice": 4125.80,
+            "chartPreviousClose": 4098.40
+          }
+        }
+      ],
+      "error": null
+    }
+  },
+  "SI=F": {
+    "chart": {
+      "result": [
+        {
+          "meta": {
+            "currency": "USD",
+            "symbol": "SI=F",
+            "regularMarketPrice": 49.35,
+            "chartPreviousClose": 48.90
+          }
+        }
+      ],
+      "error": null
+    }
+  },
+  "HG=F": {
+    "chart": {
+      "result": [
+        {
+          "meta": {
+            "currency": "USD",
+            "symbol": "HG=F",
+            "regularMarketPrice": 5.12,
+            "chartPreviousClose": 5.08
+          }
+        }
+      ],
+      "error": null
+    }
+  },
+  "BZ=F": {
+    "chart": {
+      "result": [
+        {
+          "meta": {
+            "currency": "USD",
+            "symbol": "BZ=F",
+            "regularMarketPrice": 66.40,
+            "chartPreviousClose": 65.95
+          }
+        }
+      ],
+      "error": null
+    }
+  },
+  "CL=F": {
+    "chart": {
+      "result": [
+        {
+          "meta": {
+            "currency": "USD",
+            "symbol": "CL=F",
+            "regularMarketPrice": 62.15,
+            "chartPreviousClose": 61.80
+          }
+        }
+      ],
+      "error": null
+    }
+  },
+  "BTC-USD": {
+    "chart": {
+      "result": [
+        {
+          "meta": {
+            "currency": "USD",
+            "symbol": "BTC-USD",
+            "regularMarketPrice": 112450.00,
+            "chartPreviousClose": 110800.00
+          }
+        }
+      ],
+      "error": null
+    }
+  },
+  "ETH-USD": {
+    "chart": {
+      "result": [
+        {
+          "meta": {
+            "currency": "USD",
+            "symbol": "ETH-USD",
+            "regularMarketPrice": 4085.50,
+            "chartPreviousClose": 4120.75
+          }
+        }
+      ],
+      "error": null
+    }
+  }
+}

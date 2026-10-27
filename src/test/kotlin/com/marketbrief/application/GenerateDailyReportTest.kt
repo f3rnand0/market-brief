@@ -7,7 +7,7 @@ import com.marketbrief.domain.Region
 import com.marketbrief.domain.article
 import com.marketbrief.domain.item
 import com.marketbrief.fakes.DeterministicNewsItemExtractor
-import com.marketbrief.fakes.FakeMarketData
+import com.marketbrief.fakes.FakeMarketDataFetcher
 import com.marketbrief.fakes.InMemoryReportStore
 import com.marketbrief.fakes.StaticCorpusNewsSource
 import java.time.LocalDate
@@ -30,7 +30,7 @@ class GenerateDailyReportTest {
         val store = InMemoryReportStore()
 
         val useCase = GenerateDailyReport(
-            marketData = FakeMarketData(),
+            marketDataFetcher = FakeMarketDataFetcher(),
             newsSource = StaticCorpusNewsSource(corpus),
             extractor = DeterministicNewsItemExtractor(extracted),
             reportStore = store,

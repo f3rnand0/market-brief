@@ -32,7 +32,7 @@ The pure core: types + ports, nothing else.
 - Enforce the citation invariant **at construction** (ARCHITECTURE.md §2.3):
   `NewsItem` cannot be created without a `source`. Write a test proving the
   compiler/runtime rejects an uncited item.
-- Declare the five port interfaces (`MarketData`, `NewsSource`,
+- Declare the five port interfaces (`MarketDataFetcher`, `NewsSource`,
   `NewsItemExtractor`, `ReportStore`, `EvalStore`) — signatures only, no impls.
 
 **Done when**: domain compiles with zero non-stdlib imports; invariant tests
@@ -46,7 +46,7 @@ what a port (interface) buys you.
 
 - Implement `GenerateDailyReport` (ARCHITECTURE.md §3): snapshot → fetch →
   extract → assemble sections → save. One public method: `generate(date)`.
-- Implement **fakes in test code**: `FakeMarketData`, `StaticCorpusNewsSource`
+- Implement **fakes in test code**: `FakeMarketDataFetcher`, `StaticCorpusNewsSource`
   (a few hard-coded articles), `DeterministicNewsItemExtractor` (returns fixed
   items per article id), `InMemoryReportStore`.
 - Section assembly (ARCHITECTURE.md §2.4): regional grouping, company/sector
@@ -57,11 +57,11 @@ assembled `Report` structure (four sections, grouping rules hold).
 **Learn**: constructor DI, use-case orchestration, testing through ports
 without mocks frameworks, pure domain services.
 
-## M3 — Market data adapter
+## M3 — Market data adapter ✅
 
-First real adapter: `MarketData` over HTTP.
+First real adapter: `MarketDataFetcher` over HTTP.
 
-- `YahooMarketData` + composite with per-instrument-type fallbacks
+- `YahooQuoteFetcher` + composite with per-instrument-type fallbacks
   (ADR-0001), sources queried concurrently (coroutines).
 - Map the full instrument set (PRD §7).
 - Test against recorded JSON fixtures, not the live API.

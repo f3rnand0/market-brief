@@ -8,7 +8,7 @@ company/sector news — from free web sources and market data.
 
 - Kotlin 2.4 / JVM 25
 - Gradle 9 (Kotlin DSL, wrapper included)
-- Ktor 3 (Netty) + kotlinx.serialization
+- Ktor 3 (Netty server + HTTP client) + kotlinx.serialization
 
 ## Requirements
 

@@ -1,0 +1,66 @@
+{
+  "FormattedQuoteResult": {
+    "FormattedQuote": [
+      {
+        "symbol": "US10Y",
+        "name": "U.S. 10 Year Treasury",
+        "type": "BOND",
+        "last": "4.995%",
+        "previous_day_closing": "4.986%",
+        "change": "+0.009",
+        "change_pct": "+0.1805%",
+        "curmktstatus": "REG_MKT"
+      },
+      {
+        "symbol": "DE10Y-DE",
+        "name": "German 10 Year Bond",
+        "type": "BOND",
+        "last": "3.3585%",
+        "previous_day_closing": "3.3554%",
+        "change": "+0.0031",
+        "change_pct": "-0.0258%",
+        "curmktstatus": "REG_MKT"
+      },
+      {
+        "symbol": "FR10Y-FR",
+        "name": "France 10 Year Bond",
+        "type": "BOND",
+        "last": "4.9236%",
+        "previous_day_closing": "4.9079%",
+        "change": "+0.0157",
+        "change_pct": "-0.1314%",
+        "curmktstatus": "REG_MKT"
+      },
+      {
+        "symbol": "GB10Y-GB",
+        "name": "British 10 Year Gilt",
+        "type": "BOND",
+        "last": "5.3496%",
+        "previous_day_closing": "5.3426%",
+        "change": "+0.007",
+        "change_pct": "+0.131%",
+        "curmktstatus": "REG_MKT"
+      },
+      {
+        "symbol": "JP10Y-JP",
+        "name": "Japan 10 Year Bond",
+        "type": "BOND",
+        "last": "2.819%",
+        "previous_day_closing": "2.788%",
+        "change": "+0.031",
+        "change_pct": "-0.2402%",
+        "curmktstatus": "REG_MKT"
+      },
+      {
+        "symbol": "CN10Y-CN",
+        "name": "China 10 Year Bond",
+        "type": "BOND",
+        "last": "1.633%",
+        "previous_day_closing": "1.633%",
+        "change": "0.000",
+        "change_pct": "-0.2431%",
+        "curmktstatus": "REG_MKT"
+      }
+    ]
+  }
+}

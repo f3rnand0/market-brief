@@ -4,7 +4,7 @@ import com.marketbrief.domain.Article
 import com.marketbrief.domain.DayWindow
 import com.marketbrief.domain.Instrument
 import com.marketbrief.domain.InstrumentQuote
-import com.marketbrief.domain.MarketData
+import com.marketbrief.domain.MarketDataFetcher
 import com.marketbrief.domain.NewsItem
 import com.marketbrief.domain.NewsItemExtractor
 import com.marketbrief.domain.NewsSource
@@ -14,7 +14,7 @@ import com.marketbrief.domain.Snapshot
 import java.math.BigDecimal
 import java.time.LocalDate
 
-class FakeMarketData : MarketData {
+class FakeMarketDataFetcher : MarketDataFetcher {
     override fun snapshot(instruments: Set<Instrument>): Snapshot =
         Snapshot(instruments.map { InstrumentQuote(it, BigDecimal("100"), BigDecimal("1.0")) })
 }

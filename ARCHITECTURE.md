@@ -129,7 +129,7 @@ The seams where adapters plug in. The domain *declares* them;
 the adapters layer *implements* them.
 
 ```kotlin
-interface MarketData {                     // free market-data sources (ADR-0001)
+interface MarketDataFetcher {                     // free market-data sources (ADR-0001)
     fun snapshot(instruments: Set<Instrument>): Snapshot
 }
 
@@ -154,12 +154,12 @@ interface EvalStore {                      // persist / load eval reports
 
 Each seam is real (two adapters), not hypothetical:
 
-| Port                | Adapters                                              |
-|---------------------|-------------------------------------------------------|
-| `MarketData`        | Yahoo primary + per-instrument-type fallbacks (composite) |
-| `NewsSource`        | `RssNewsSource`, `GdeltNewsSource`                    |
+| Port                | Adapters                                                  |
+|---------------------|-----------------------------------------------------------|
+| `MarketDataFetcher`  | Yahoo primary + per-instrument-type fallbacks (composite)  |
+| `NewsSource`        | `RssNewsSource`, `GdeltNewsSource`                        |
 | `NewsItemExtractor` | `LangChain4jNewsItemExtractor` + deterministic fake (tests/eval) |
-| `ReportStore`       | `JsonReportStore` + in-memory fake (tests)            |
+| `ReportStore`       | `JsonReportStore` + in-memory fake (tests)                |
 | `EvalStore`         | `JsonEvalStore` + in-memory fake (tests)              |
 
 `NewsItemExtractor` is the most important seam: the LangChain4j adapter
@@ -173,7 +173,7 @@ implements it, and the structured-output investigation targets it directly
 Use cases orchestrate the ports and domain services.
 
 - **`GenerateDailyReport`** — the pipeline:
-  1. `MarketData.snapshot(...)` → `Snapshot`.
+  1. `MarketDataFetcher.snapshot(...)` → `Snapshot`.
   2. `NewsSource.fetch(...)` → `Article`s.
   3. `NewsItemExtractor.extract(...)` → valid `NewsItem`s (invalid candidates
      never cross the seam; see §2.3).
@@ -197,8 +197,8 @@ exposes an on-demand trigger.
 
 Concrete adapters implementing the domain ports.
 
-- **`YahooMarketData`** — primary free market-data source, behind a composite
-  adapter that applies **per-instrument-type fallbacks** (e.g. FRED for yields)
+- **`YahooQuoteFetcher`** — primary free market-data source, behind a composite
+  adapter that applies **per-instrument-type fallbacks** (e.g. CNBC for non-US yields)
   and can run **multiple sources concurrently** (ADR-0001).
 - **`RssNewsSource` / `GdeltNewsSource`** — free news ingestion (Google News RSS
   / GDELT backbone + curated RSS list).
@@ -260,7 +260,7 @@ Two seams carry the project's risk and are kept deliberately narrow:
    stresses LangChain4j's structured output. The upstream investigation is a
    **time-boxed spike** with explicit exit criteria (a reproducible finding +
    issue/PR link, or a documented "no issue found").
-2. **`MarketData`** — swappable and composite, so free-source coverage gaps can
+2. **`MarketDataFetcher`** — swappable and composite, so free-source coverage gaps can
    be patched per instrument type without touching the domain.
 
 ---
@@ -284,7 +284,7 @@ article prose → typed `NewsItem` candidates inside
 3. **Ports & adapters; seams are real, not hypothetical.** Every port has (or
    will have) two adapters — a production one and a fallback/fake. The LLM
    provider and data sources are implementation details behind
-   `NewsItemExtractor` and `MarketData`.
+   `NewsItemExtractor` and `MarketDataFetcher`.
 4. **Deep use cases.** One method per use case; orchestration stays inside;
    tests drive the use case through port fakes.
 5. **Invariants live in the types, not in pipeline steps** (parse, don't

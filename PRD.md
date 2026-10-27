@@ -79,7 +79,7 @@ See `GLOSSARY.md` for the canonical vocabulary. Highlights:
 ## 8. Data sources (free only)
 
 - **Market data**: Yahoo Finance primary, with **per-instrument-type
-  fallbacks** (e.g. FRED for yields), behind a swappable `MarketData` port that
+  fallbacks** (e.g. CNBC for non-US yields), behind a swappable `MarketDataFetcher` port that
   can run **multiple sources concurrently**.
 - **News**: Google News RSS / GDELT as the coverage backbone, plus a curated
   RSS list of free outlets. The PoC uses a **static curated corpus** (~30–40
@@ -140,5 +140,6 @@ AI-agent web browsing (open-ended discovery).
 ## 15. To resolve during implementation
 
 - Exact curated RSS outlet list (including China and Latam outlets).
-- Exact per-instrument-type fallback mapping for market data.
+- Exact per-instrument-type fallback mapping for market data — resolved for
+  v1: Yahoo Finance primary, CNBC for fixed-income yields.
 - Which judge model/approach scores "unsupported claims".
