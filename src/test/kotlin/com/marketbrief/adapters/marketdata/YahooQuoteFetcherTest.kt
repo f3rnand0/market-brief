@@ -1,15 +1,9 @@
 package com.marketbrief.adapters.marketdata
 
 import com.marketbrief.domain.ReportInstruments
-import io.ktor.client.HttpClient
-import io.ktor.client.engine.mock.MockEngine
-import io.ktor.client.engine.mock.respond
 import io.ktor.client.request.HttpRequestData
-import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
-import io.ktor.http.HttpStatusCode
 import io.ktor.http.decodeURLPart
-import io.ktor.http.headersOf
 import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -61,13 +55,13 @@ class YahooQuoteFetcherTest {
 
     @Test
     fun `malformed payload is skipped while other quotes survive`() = runBlocking {
-        val client = clientServing { symbol ->
+        val client = QuoteFixtures.yahooClient(bodyFor = { symbol ->
             when (symbol) {
                 "^GSPC" -> "{not json"
                 "^VIX" -> chart("regularMarketPrice" to "16.85", "chartPreviousClose" to "17.42")
                 else -> null
             }
-        }
+        })
 
         val quotes = YahooQuoteFetcher(client)
             .quotes(setOf(ReportInstruments.sp500, ReportInstruments.vix))
@@ -79,35 +73,15 @@ class YahooQuoteFetcherTest {
 
     @Test
     fun `previousClose is used when chartPreviousClose is absent`() = runBlocking {
-        val client = clientServing { symbol ->
+        val client = QuoteFixtures.yahooClient(bodyFor = { symbol ->
             if (symbol == "^GSPC") chart("regularMarketPrice" to "100.0", "previousClose" to "98.0") else null
-        }
+        })
 
         val quotes = YahooQuoteFetcher(client)
             .quotes(setOf(ReportInstruments.sp500))
             .associateBy { it.instrument }
 
         assertQuote(quotes, ReportInstruments.sp500, "100.0", "2.04")
-    }
-
-    private fun clientServing(bodyFor: (symbol: String) -> String?): HttpClient = HttpClient(MockEngine) {
-        engine {
-            addHandler { request ->
-                val symbol = request.url.encodedPath
-                    .substringAfter("/v8/finance/chart/")
-                    .decodeURLPart()
-                val body = bodyFor(symbol)
-                if (body == null) {
-                    respond("", HttpStatusCode.NotFound)
-                } else {
-                    respond(
-                        body,
-                        HttpStatusCode.OK,
-                        headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
-                    )
-                }
-            }
-        }
     }
 
     private fun chart(vararg meta: Pair<String, String>): String =

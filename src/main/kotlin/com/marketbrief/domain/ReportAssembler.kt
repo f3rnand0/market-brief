@@ -63,13 +63,11 @@ object ReportAssembler {
             .forEach { buckets[bucketOf(it)].add(it) }
 
         val result = mutableListOf<NewsItem>()
-        while (result.size < COMPANY_SECTOR_LIMIT) {
-            val before = result.size
+        while (result.size < COMPANY_SECTOR_LIMIT && buckets.any { it.isNotEmpty() }) {
             for (bucket in buckets) {
                 if (result.size == COMPANY_SECTOR_LIMIT) break
                 bucket.removeFirstOrNull()?.let(result::add)
             }
-            if (result.size == before) break // all buckets empty
         }
         return result
     }

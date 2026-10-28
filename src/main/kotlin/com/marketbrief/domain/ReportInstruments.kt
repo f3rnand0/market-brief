@@ -33,8 +33,8 @@ object ReportInstruments {
     val summaryIndices: List<Instrument> = listOf(sp500, nasdaqComposite)
 
     private val summaryIndexAliases: Map<Instrument, Set<String>> = mapOf(
-        sp500 to setOf("S&P 500", "S&P500", "S&P 500 Index", "^GSPC"),
-        nasdaqComposite to setOf("Nasdaq Composite", "Nasdaq", "Nasdaq Comp", "^IXIC"),
+        sp500 to setOf("S&P 500", "S&P500", "S&P 500 Index"),
+        nasdaqComposite to setOf("Nasdaq Composite", "Nasdaq", "Nasdaq Comp"),
     )
 
     fun summaryInstrumentFor(subjectName: String): Instrument? {

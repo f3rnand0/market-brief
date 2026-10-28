@@ -83,6 +83,11 @@ The LLM seam, behind `NewsItemExtractor`.
   the port.
 - Test with a stubbed HTTP server returning canned structured output — no
   live LLM in unit tests.
+- **Extraction throughput** (prune review Q-3): `GenerateDailyReport` extracts
+  serially (`articles.flatMap(extractor::extract)`), so 30–40 articles cost the
+  sum of every LLM round-trip. No doc requires serial order; decide here between
+  concurrent extraction (bounded fan-out) and keeping it serial for cost and
+  stable eval output, and record the choice.
 
 **Done when**: fixture-backed tests cover valid extraction, dropped
 uncited candidates, and drop counts; one manual smoke run against a real

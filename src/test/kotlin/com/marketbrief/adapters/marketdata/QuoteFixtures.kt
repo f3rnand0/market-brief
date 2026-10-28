@@ -24,19 +24,22 @@ object QuoteFixtures {
         .parseToJsonElement(resource("/fixtures/yahoo/chart-quotes.json"))
         .jsonObject
 
-    fun yahooClient(requests: MutableList<HttpRequestData>? = null): HttpClient = HttpClient(MockEngine) {
+    fun yahooClient(
+        requests: MutableList<HttpRequestData>? = null,
+        bodyFor: (symbol: String) -> String? = { yahooChartQuotes[it]?.toString() },
+    ): HttpClient = HttpClient(MockEngine) {
         engine {
             addHandler { request ->
                 requests?.add(request)
                 val symbol = request.url.encodedPath
                     .substringAfter("/v8/finance/chart/")
                     .decodeURLPart()
-                val payload = yahooChartQuotes[symbol]
-                if (payload == null) {
+                val body = bodyFor(symbol)
+                if (body == null) {
                     respond("", HttpStatusCode.NotFound)
                 } else {
                     respond(
-                        payload.toString(),
+                        body,
                         HttpStatusCode.OK,
                         headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
                     )
