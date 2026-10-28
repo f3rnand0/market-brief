@@ -7,21 +7,16 @@ import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.parameter
 import io.ktor.client.request.url
-import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpHeaders
 import io.ktor.http.appendPathSegments
-import io.ktor.http.isSuccess
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
 import java.math.BigDecimal
-import kotlin.time.Duration.Companion.seconds
 
 class YahooQuoteFetcher(
     private val client: HttpClient,
@@ -38,41 +33,48 @@ class YahooQuoteFetcher(
     }
 
     private suspend fun quote(instrument: Instrument, symbol: String): InstrumentQuote? = try {
-        val body = withTimeout(REQUEST_TIMEOUT) {
-            val response = client.get("$baseUrl/v8/finance/chart") {
+        val body = QuoteRequestPolicy.bodyOrNull("Yahoo", symbol, log) {
+            client.get("$baseUrl/v8/finance/chart") {
                 url { appendPathSegments(symbol) }
                 header(HttpHeaders.UserAgent, "Mozilla/5.0 (compatible; market-brief/0.1)")
                 parameter("range", "1d")
                 parameter("interval", "1d")
             }
-            if (!response.status.isSuccess()) {
-                log.debug("Yahoo returned {} for {}", response.status, symbol)
-                return@withTimeout null
-            }
-            response.bodyAsText()
         } ?: return null
         toQuote(instrument, json.decodeFromString<YahooChartResponse>(body))
-    } catch (e: TimeoutCancellationException) {
-        log.warn("Yahoo request timed out for {}", symbol)
-        null
     } catch (e: CancellationException) {
         throw e
     } catch (e: Exception) {
-        log.warn("Yahoo request failed for {}", symbol, e)
+        log.warn("Yahoo response for {} could not be parsed", symbol, e)
         null
     }
 
     private fun toQuote(instrument: Instrument, response: YahooChartResponse): InstrumentQuote? {
-        val meta = response.chart.result?.firstOrNull()?.meta ?: return null
-        val current = meta.regularMarketPrice ?: return null
-        val previous = meta.chartPreviousClose ?: meta.previousClose ?: return null
+        val meta = response.chart.result?.firstOrNull()?.meta
+        if (meta == null) {
+            log.warn("Yahoo response for {} has no chart result metadata", instrument.name)
+            return null
+        }
+        val current = meta.regularMarketPrice
+        if (current == null) {
+            log.warn("Yahoo response for {} has no regularMarketPrice", instrument.name)
+            return null
+        }
+        val previous = meta.chartPreviousClose ?: meta.previousClose
+        if (previous == null) {
+            log.warn("Yahoo response for {} has no previous close", instrument.name)
+            return null
+        }
         val price = BigDecimal.valueOf(current)
-        val changePercent = percentChange(BigDecimal.valueOf(previous), price) ?: return null
+        val changePercent = percentChange(BigDecimal.valueOf(previous), price)
+        if (changePercent == null) {
+            log.warn("Yahoo previous close for {} is zero", instrument.name)
+            return null
+        }
         return InstrumentQuote(instrument, price, price.subtract(BigDecimal.valueOf(previous)), changePercent)
     }
 
     private companion object {
-        val REQUEST_TIMEOUT = 15.seconds
         val log = LoggerFactory.getLogger(YahooQuoteFetcher::class.java)
     }
 }

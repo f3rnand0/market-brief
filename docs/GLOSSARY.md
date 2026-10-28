@@ -6,14 +6,17 @@ from free web sources and market data.
 ## Language
 
 **Report**:
-The daily output: a structured JSON document and its rendered HTML page.
+The daily output: a structured JSON document and its rendered HTML page. It
+carries the summary (including `otherNews` for GLOBAL macro and market moves),
+the snapshot, regional news, and company/sector news.
 _Avoid_: digest, bulletin
 
 **Snapshot**:
 The structured report section that lists market numbers and day-over-day
 changes by asset class. Numbers come from a market-data API, never from
-article prose. In the domain, `Snapshot` is a flat list of `InstrumentQuote`s;
-grouping by asset class happens at render time.
+article prose. In the domain, `Snapshot` is a flat list of `InstrumentQuote`s
+plus the requested `Instrument`s that could not be resolved; grouping by asset
+class happens at render time.
 _Avoid_: market data (that's the raw input, not the section)
 
 **Instrument**:

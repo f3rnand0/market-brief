@@ -8,4 +8,5 @@ data class Report(
     val snapshot: Snapshot,
     val regionalNews: Map<Region, List<NewsItem>>,
     val companySectorNews: List<NewsItem>,
+    val otherNews: List<NewsItem>,
 )

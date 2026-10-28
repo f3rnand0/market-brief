@@ -85,12 +85,16 @@ article:
 
 **`Snapshot`** is the structured market-numbers data: a flat list of
 `InstrumentQuote`s, each tagged with an `Instrument` and its asset class
-(equities, fixed income, FX & volatility, commodities, crypto). The report
+(equities, fixed income, FX & volatility, commodities, crypto), plus the set of
+requested `Instrument`s that could not be resolved (`missing`). The report
 groups quotes by asset class when rendered. Its numbers come from a market-data
-API — **never** from article prose (ADR-0001).
+API — **never** from article prose (ADR-0001). Missing instruments stay
+explicit so absence is never rendered as a market fact (ADR-0005).
 
 **`Report`** is the assembled output document: the four sections built from a
-`Snapshot` plus the extracted `NewsItem`s.
+`Snapshot` plus the extracted `NewsItem`s. The summary section also carries
+`otherNews` for GLOBAL `MACRO` and `MARKET_MOVE` items that belong to no
+continent.
 
 **`Article`** is the input aggregate: headline, body, `outlet`, URL, publication
 date.
@@ -126,7 +130,11 @@ company/sector balance (US / China / Global, never US-only), and the summary.
 The summary's S&P 500 and Nasdaq Composite levels and moves come from the
 `Snapshot`; causes come from matching `MARKET_MOVE` items through the
 domain-owned index aliases (`ReportInstruments.summaryInstrumentFor`). One
-sentence per index. Regional ranking, capping, and dedupe are scheduled in M8.
+sentence per index. An index present in `Snapshot.missing` renders as
+`"<index>: data unavailable."`; a complete snapshot with no index quotes
+renders as "No major index moves." GLOBAL `MACRO` and `MARKET_MOVE` items are
+carried as `Report.otherNews` (the summary's "other important news") rather
+than dropped. Regional ranking, capping, and dedupe are scheduled in M8.
 
 ### 2.5 Ports (interfaces owned by the domain)
 
@@ -214,8 +222,8 @@ Concrete adapters implementing the domain ports.
   for non-US yields) fill gaps, all sources are queried concurrently, and the
   primary wins when two sources cover the same instrument (ADR-0001). Requests
   are bounded at 15 seconds; CNBC decodes each quote independently so one
-  malformed element does not discard the batch. The composite logs when it
-  resolves fewer instruments than requested.
+  malformed element does not discard the batch. The composite records
+  unresolved instruments in `Snapshot.missing` and logs the gap.
 - **`RssNewsSource` / `GdeltNewsSource`** — free news ingestion (Google News RSS
   / GDELT backbone + curated RSS list).
 - **`LangChain4jNewsItemExtractor`** — the LLM adapter. Uses a single

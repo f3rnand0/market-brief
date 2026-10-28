@@ -98,7 +98,7 @@ class ReportAssemblerTest {
     }
 
     @Test
-    fun `summary states when the snapshot has no index moves`() {
+    fun `summary states no moves for a complete snapshot without index quotes`() {
         val items = listOf(
             item(
                 type = NewsItemType.MARKET_MOVE,
@@ -111,6 +111,66 @@ class ReportAssemblerTest {
         val summary = ReportAssembler.assemble(date, Snapshot(emptyList()), items).summary
 
         assertEquals("No major index moves.", summary)
+    }
+
+    @Test
+    fun `missing index data is reported as unavailable, not as no moves`() {
+        val snapshot = Snapshot(
+            quotes = emptyList(),
+            missing = setOf(ReportInstruments.sp500, ReportInstruments.nasdaqComposite),
+        )
+
+        val summary = ReportAssembler.assemble(date, snapshot, emptyList()).summary
+
+        assertEquals("S&P 500: data unavailable. Nasdaq Composite: data unavailable.", summary)
+    }
+
+    @Test
+    fun `partially missing index data still reports the available index`() {
+        val snapshot = Snapshot(
+            quotes = indexSnapshot().quotes.filter { it.instrument == ReportInstruments.sp500 },
+            missing = setOf(ReportInstruments.nasdaqComposite),
+        )
+
+        val summary = ReportAssembler.assemble(date, snapshot, emptyList()).summary
+
+        assertEquals("S&P 500: 6912.50 (0.61%). Nasdaq Composite: data unavailable.", summary)
+    }
+
+    @Test
+    fun `a joint index move attaches its cause to every matched index`() {
+        val jointMove = item(
+            type = NewsItemType.MARKET_MOVE,
+            subject = "S&P 500",
+            cause = "hawkish Fed comments",
+        ).copy(subjects = listOf(Subject("S&P 500"), Subject("Nasdaq Composite")))
+
+        val summary = ReportAssembler.assemble(date, indexSnapshot(), listOf(jointMove)).summary
+
+        assertTrue(summary.contains("S&P 500: 6912.50 (0.61%). Caused by: hawkish Fed comments."))
+        assertTrue(summary.contains("Nasdaq Composite: 23950.75 (-0.70%). Caused by: hawkish Fed comments."))
+    }
+
+    @Test
+    fun `global macro and market items are kept as other news`() {
+        val macro = item(type = NewsItemType.MACRO, region = Region.GLOBAL, subject = "Federal Reserve")
+        val move = item(type = NewsItemType.MARKET_MOVE, region = Region.GLOBAL, subject = "Oil")
+
+        val report = ReportAssembler.assemble(date, snapshot, listOf(macro, move))
+
+        assertEquals(listOf(macro, move), report.otherNews)
+        assertTrue(report.regionalNews.isEmpty())
+        assertTrue(report.companySectorNews.isEmpty())
+    }
+
+    @Test
+    fun `global company and sector items stay in the company-sector section`() {
+        val company = item(type = NewsItemType.COMPANY, region = Region.GLOBAL, subject = "TSMC")
+
+        val report = ReportAssembler.assemble(date, snapshot, listOf(company))
+
+        assertEquals(listOf(company), report.companySectorNews)
+        assertTrue(report.otherNews.isEmpty())
     }
 
     @Test

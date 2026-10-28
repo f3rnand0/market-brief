@@ -38,8 +38,8 @@ class CompositeMarketDataFetcher(
         }
 
         val quotes = instruments.mapNotNull(resolved::get)
-        if (quotes.size < instruments.size) {
-            val missing = instruments - quotes.mapTo(mutableSetOf()) { it.instrument }
+        val missing = instruments - quotes.mapTo(mutableSetOf()) { it.instrument }
+        if (missing.isNotEmpty()) {
             log.warn(
                 "Market snapshot incomplete: resolved {} of {} instruments; missing {}",
                 quotes.size,
@@ -47,7 +47,7 @@ class CompositeMarketDataFetcher(
                 missing.joinToString { it.name },
             )
         }
-        return Snapshot(quotes)
+        return Snapshot(quotes, missing)
     }
 
     private companion object {

@@ -17,4 +17,10 @@ data class InstrumentQuote(
     val changePercent: BigDecimal,
 )
 
-data class Snapshot(val quotes: List<InstrumentQuote>)
+data class Snapshot(val quotes: List<InstrumentQuote>, val missing: Set<Instrument> = emptySet()) {
+    init {
+        require(quotes.none { it.instrument in missing }) {
+            "An instrument cannot be both missing and quoted"
+        }
+    }
+}

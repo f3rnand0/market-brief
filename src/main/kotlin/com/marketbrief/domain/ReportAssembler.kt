@@ -7,20 +7,28 @@ object ReportAssembler {
     private val REGIONAL_SECTIONS = Region.entries.filter { it != Region.GLOBAL }
     private const val COMPANY_SECTOR_LIMIT = 10
 
+    private val NewsItem.isCompanyOrSector: Boolean
+        get() = type == NewsItemType.COMPANY || type == NewsItemType.SECTOR
+
     fun assemble(date: LocalDate, snapshot: Snapshot, items: List<NewsItem>): Report = Report(
         date = date,
         summary = buildSummary(snapshot, items),
         snapshot = snapshot,
         regionalNews = regionalSections(items),
         companySectorNews = balancedCompanySector(items),
+        otherNews = otherNewsItems(items),
     )
 
     private fun buildSummary(snapshot: Snapshot, items: List<NewsItem>): String {
         val quotes = snapshot.quotes.associateBy { it.instrument }
         val causes = causesBySummaryInstrument(items)
         val sentences = ReportInstruments.summaryIndices.mapNotNull { instrument ->
-            val quote = quotes[instrument] ?: return@mapNotNull null
-            buildIndexSentence(instrument, quote, causes[instrument])
+            val quote = quotes[instrument]
+            when {
+                quote != null -> buildIndexSentence(instrument, quote, causes[instrument])
+                instrument in snapshot.missing -> "${instrument.name}: data unavailable."
+                else -> null
+            }
         }
         return sentences.ifEmpty { listOf("No major index moves.") }.joinToString(" ")
     }
@@ -30,10 +38,12 @@ object ReportAssembler {
         for (item in items) {
             if (item.type != NewsItemType.MARKET_MOVE) continue
             val cause = item.cause?.trimEnd('.') ?: continue
-            val instrument = item.subjects
-                .firstNotNullOfOrNull { ReportInstruments.summaryInstrumentFor(it.name) }
-                ?: continue
-            causes.getOrPut(instrument) { linkedSetOf() }.add(cause)
+            val matched = item.subjects
+                .mapNotNull { ReportInstruments.summaryInstrumentFor(it.name) }
+                .distinct()
+            for (instrument in matched) {
+                causes.getOrPut(instrument) { linkedSetOf() }.add(cause)
+            }
         }
         return causes
     }
@@ -51,6 +61,9 @@ object ReportAssembler {
         .filter { it.region in REGIONAL_SECTIONS }
         .groupBy { it.region }
 
+    private fun otherNewsItems(items: List<NewsItem>): List<NewsItem> = items
+        .filter { it.region == Region.GLOBAL && !it.isCompanyOrSector }
+
     private fun balancedCompanySector(items: List<NewsItem>): List<NewsItem> {
         fun bucketOf(item: NewsItem) = when (item.region) {
             Region.US -> 0
@@ -59,7 +72,7 @@ object ReportAssembler {
         }
         val buckets = Array(3) { ArrayDeque<NewsItem>() }
         items
-            .filter { it.type == NewsItemType.COMPANY || it.type == NewsItemType.SECTOR }
+            .filter { it.isCompanyOrSector }
             .forEach { buckets[bucketOf(it)].add(it) }
 
         val result = mutableListOf<NewsItem>()

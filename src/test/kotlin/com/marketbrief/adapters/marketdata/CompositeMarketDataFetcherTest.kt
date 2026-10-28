@@ -13,6 +13,7 @@ import java.math.BigDecimal
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class CompositeMarketDataFetcherTest {
 
@@ -29,6 +30,7 @@ class CompositeMarketDataFetcherTest {
         val quotes = snapshot.quotes.associateBy { it.instrument }
 
         assertEquals(ReportInstruments.all, quotes.keys)
+        assertTrue(snapshot.missing.isEmpty())
         assertQuote(quotes, ReportInstruments.sp500, "6912.50", "0.61")
         assertQuote(quotes, ReportInstruments.us10y, "4.995", "0.18")
         assertQuote(quotes, ReportInstruments.germany10y, "3.3585", "0.09")
@@ -81,7 +83,7 @@ class CompositeMarketDataFetcherTest {
     }
 
     @Test
-    fun `unresolved instruments are omitted from the snapshot`() = runBlocking {
+    fun `unresolved instruments are omitted from quotes and recorded as missing`() = runBlocking {
         val composite = CompositeMarketDataFetcher(
             primary = fetcherOf(ReportInstruments.sp500, "100", "1.00"),
             fallbacks = emptyMap(),
@@ -90,6 +92,7 @@ class CompositeMarketDataFetcherTest {
         val snapshot = composite.snapshot(setOf(ReportInstruments.sp500, ReportInstruments.nasdaqComposite))
 
         assertEquals(setOf(ReportInstruments.sp500), snapshot.quotes.map { it.instrument }.toSet())
+        assertEquals(setOf(ReportInstruments.nasdaqComposite), snapshot.missing)
     }
 
     private fun fetcherOf(instrument: Instrument, value: String, changePercent: String): QuoteFetcher =

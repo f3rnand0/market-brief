@@ -108,10 +108,10 @@ Expose the pipeline over HTTP and persist reports.
 - Endpoints: `POST /report/generate`, `GET /report/{date}`,
   `GET /report/{date}.html` (kotlinx.html rendering).
 - `testApplication` tests for each endpoint, wired with M2 fakes.
-- **Snapshot completeness policy** (prune review Q-4): decide whether a missing
-  instrument fails generation, travels as an explicit `missing` set, or is
-  accepted silently. Record the decision in an ADR and cover it with a
-  composite test.
+- **Snapshot completeness policy** (prune review Q-4): resolved in ADR-0005 —
+  missing instruments travel in `Snapshot.missing` and render as
+  "data unavailable"; `CompositeMarketDataFetcher` and `ReportAssembler` cover
+  it with tests.
 
 **Done when**: tests generate a report through HTTP and read it back as JSON
 and HTML; `./gradlew run` serves a real generated report (fakes + M3/M4
