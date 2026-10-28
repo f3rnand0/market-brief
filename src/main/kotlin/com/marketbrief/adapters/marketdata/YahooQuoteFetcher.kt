@@ -21,6 +21,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
 import java.math.BigDecimal
+import kotlin.time.Duration.Companion.seconds
 
 class YahooQuoteFetcher(
     private val client: HttpClient,
@@ -37,7 +38,7 @@ class YahooQuoteFetcher(
     }
 
     private suspend fun quote(instrument: Instrument, symbol: String): InstrumentQuote? = try {
-        val body = withTimeout(REQUEST_TIMEOUT_MILLIS) {
+        val body = withTimeout(REQUEST_TIMEOUT) {
             val response = client.get("$baseUrl/v8/finance/chart") {
                 url { appendPathSegments(symbol) }
                 header(HttpHeaders.UserAgent, "Mozilla/5.0 (compatible; market-brief/0.1)")
@@ -71,7 +72,7 @@ class YahooQuoteFetcher(
     }
 
     private companion object {
-        const val REQUEST_TIMEOUT_MILLIS = 15_000L
+        val REQUEST_TIMEOUT = 15.seconds
         val log = LoggerFactory.getLogger(YahooQuoteFetcher::class.java)
     }
 }

@@ -58,13 +58,11 @@ object QuoteFixtures {
         }
     }
 
-    private fun resource(path: String): String =
-        checkNotNull(readResourceOrNull(path)) { "missing fixture $path" }
+    private fun resource(path: String): String = checkNotNull(readResourceOrNull(path)) { "missing fixture $path" }
 
-    private fun readResourceOrNull(path: String): String? =
-        QuoteFixtures::class.java.getResourceAsStream(path)
-            ?.bufferedReader()
-            ?.use { it.readText() }
+    private fun readResourceOrNull(path: String): String? = QuoteFixtures::class.java.getResourceAsStream(path)
+        ?.bufferedReader()
+        ?.use { it.readText() }
 }
 
 internal fun assertQuote(

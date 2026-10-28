@@ -44,8 +44,7 @@ object ReportInstruments {
             ?.key
     }
 
-    private fun normalize(name: String): String =
-        name.lowercase().filter { it.isLetterOrDigit() }
+    private fun normalize(name: String): String = name.lowercase().filter { it.isLetterOrDigit() }
 
     val all: Set<Instrument> = linkedSetOf(
         sp500, nasdaqComposite, stoxxEurope600, ftse100, dax40, nikkei225,

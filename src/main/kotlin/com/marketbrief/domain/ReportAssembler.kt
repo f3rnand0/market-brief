@@ -7,14 +7,13 @@ object ReportAssembler {
     private val REGIONAL_SECTIONS = Region.entries.filter { it != Region.GLOBAL }
     private const val COMPANY_SECTOR_LIMIT = 10
 
-    fun assemble(date: LocalDate, snapshot: Snapshot, items: List<NewsItem>): Report =
-        Report(
-            date = date,
-            summary = buildSummary(snapshot, items),
-            snapshot = snapshot,
-            regionalNews = regionalSections(items),
-            companySectorNews = balancedCompanySector(items),
-        )
+    fun assemble(date: LocalDate, snapshot: Snapshot, items: List<NewsItem>): Report = Report(
+        date = date,
+        summary = buildSummary(snapshot, items),
+        snapshot = snapshot,
+        regionalNews = regionalSections(items),
+        companySectorNews = balancedCompanySector(items),
+    )
 
     private fun buildSummary(snapshot: Snapshot, items: List<NewsItem>): String {
         val quotes = snapshot.quotes.associateBy { it.instrument }
@@ -39,11 +38,7 @@ object ReportAssembler {
         return causes
     }
 
-    private fun buildIndexSentence(
-        instrument: Instrument,
-        quote: InstrumentQuote,
-        causes: Set<String>?,
-    ): String {
+    private fun buildIndexSentence(instrument: Instrument, quote: InstrumentQuote, causes: Set<String>?): String {
         val move = "${instrument.name}: ${quote.value.toPlainString()} (${quote.changePercent.toPlainString()}%)."
         return if (causes.isNullOrEmpty()) {
             move
@@ -52,10 +47,9 @@ object ReportAssembler {
         }
     }
 
-    private fun regionalSections(items: List<NewsItem>): Map<Region, List<NewsItem>> =
-        items
-            .filter { it.region in REGIONAL_SECTIONS }
-            .groupBy { it.region }
+    private fun regionalSections(items: List<NewsItem>): Map<Region, List<NewsItem>> = items
+        .filter { it.region in REGIONAL_SECTIONS }
+        .groupBy { it.region }
 
     private fun balancedCompanySector(items: List<NewsItem>): List<NewsItem> {
         fun bucketOf(item: NewsItem) = when (item.region) {

@@ -90,26 +90,25 @@ class YahooQuoteFetcherTest {
         assertQuote(quotes, ReportInstruments.sp500, "100.0", "2.04")
     }
 
-    private fun clientServing(bodyFor: (symbol: String) -> String?): HttpClient =
-        HttpClient(MockEngine) {
-            engine {
-                addHandler { request ->
-                    val symbol = request.url.encodedPath
-                        .substringAfter("/v8/finance/chart/")
-                        .decodeURLPart()
-                    val body = bodyFor(symbol)
-                    if (body == null) {
-                        respond("", HttpStatusCode.NotFound)
-                    } else {
-                        respond(
-                            body,
-                            HttpStatusCode.OK,
-                            headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
-                        )
-                    }
+    private fun clientServing(bodyFor: (symbol: String) -> String?): HttpClient = HttpClient(MockEngine) {
+        engine {
+            addHandler { request ->
+                val symbol = request.url.encodedPath
+                    .substringAfter("/v8/finance/chart/")
+                    .decodeURLPart()
+                val body = bodyFor(symbol)
+                if (body == null) {
+                    respond("", HttpStatusCode.NotFound)
+                } else {
+                    respond(
+                        body,
+                        HttpStatusCode.OK,
+                        headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+                    )
                 }
             }
         }
+    }
 
     private fun chart(vararg meta: Pair<String, String>): String =
         """{"chart":{"result":[{"meta":{${meta.joinToString(",") { (key, value) -> "\"$key\":$value" }}}}]}}"""

@@ -1,7 +1,7 @@
 # MILESTONES — market-brief
 
-Learning-oriented implementation plan for [`PRD.md`](PRD.md), following
-[`ARCHITECTURE.md`](ARCHITECTURE.md). Each milestone is small enough to build,
+Learning-oriented implementation plan for [`docs/PRD.md`](docs/PRD.md), following
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). Each milestone is small enough to build,
 test, and understand in one sitting. Work them in order; M9 (spike) may run in
 parallel any time after M4.
 

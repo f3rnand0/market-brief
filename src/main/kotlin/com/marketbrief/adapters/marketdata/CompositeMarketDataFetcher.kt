@@ -6,6 +6,7 @@ import com.marketbrief.domain.InstrumentQuote
 import com.marketbrief.domain.MarketDataFetcher
 import com.marketbrief.domain.Snapshot
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import org.slf4j.LoggerFactory
 
@@ -22,7 +23,7 @@ class CompositeMarketDataFetcher(
                 sources.map { source -> async { source.quotes(group) } }
             }
             primaryDeferred.await() to
-                fallbackDeferred.mapValues { (_, deferred) -> deferred.map { it.await() } }
+                fallbackDeferred.mapValues { (_, deferred) -> deferred.awaitAll() }
         }
 
         val resolved = primaryQuotes.associateByTo(mutableMapOf<Instrument, InstrumentQuote>()) { it.instrument }

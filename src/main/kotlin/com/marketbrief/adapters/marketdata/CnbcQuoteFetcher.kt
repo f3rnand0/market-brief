@@ -20,6 +20,7 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import org.slf4j.LoggerFactory
 import java.math.BigDecimal
+import kotlin.time.Duration.Companion.seconds
 
 class CnbcQuoteFetcher(
     private val client: HttpClient,
@@ -35,7 +36,7 @@ class CnbcQuoteFetcher(
         if (bySymbol.isEmpty()) return emptyList()
 
         return try {
-            val body = withTimeout(REQUEST_TIMEOUT_MILLIS) {
+            val body = withTimeout(REQUEST_TIMEOUT) {
                 val response = client.get("$baseUrl/quote-html-webservice/restQuote/symbolType/symbol") {
                     header(HttpHeaders.UserAgent, "Mozilla/5.0 (compatible; market-brief/0.1)")
                     parameter("symbols", bySymbol.keys.joinToString("|"))
@@ -98,11 +99,10 @@ class CnbcQuoteFetcher(
         }
     }
 
-    private fun String?.asPercent(): BigDecimal? =
-        this?.removeSuffix("%")?.trim()?.toBigDecimalOrNull()
+    private fun String?.asPercent(): BigDecimal? = this?.removeSuffix("%")?.trim()?.toBigDecimalOrNull()
 
     private companion object {
-        const val REQUEST_TIMEOUT_MILLIS = 15_000L
+        val REQUEST_TIMEOUT = 15.seconds
         val log = LoggerFactory.getLogger(CnbcQuoteFetcher::class.java)
     }
 }

@@ -2,6 +2,7 @@ plugins {
     kotlin("jvm") version "2.4.21"
     kotlin("plugin.serialization") version "2.4.21"
     application
+    id("org.jlleitschuh.gradle.ktlint") version "14.2.0"
 }
 
 group = "com.marketbrief"
@@ -40,4 +41,8 @@ application {
 
 tasks.test {
     useJUnitPlatform()
+}
+
+ktlint {
+    version.set("1.8.0")
 }

@@ -2,15 +2,22 @@
 
 ## Documents
 
-- `PRD.md` — requirements, scope, eval loop. Reach here for *what/why*
+- `docs/PRD.md` — requirements, scope, eval loop. Reach here for *what/why*
   questions.
-- `ARCHITECTURE.md` — layers, ports & adapters, seams. Follow it for any code
-  change: dependency direction, pure domain, two adapters per port.
-- `GLOSSARY.md` — canonical domain vocabulary. Use its terms in code; avoid
-  its listed synonyms.
+- `docs/ARCHITECTURE.md` — layers, ports & adapters, seams. Follow it for any
+  code change: dependency direction, pure domain, two adapters per port.
+- `docs/GLOSSARY.md` — canonical domain vocabulary. Use its terms in code;
+  avoid its listed synonyms.
 - `MILESTONES.md` — implementation plan; work it in order.
 
 When your change alters what a doc describes, update that doc.
+
+## Build gate
+
+`./gradlew build` runs `ktlintCheck`, so a style violation fails the build.
+Fix with `./gradlew ktlintFormat` rather than hand-wrapping. Style lives in
+`.editorconfig` (`ktlint_code_style = intellij_idea`, 120 columns); do not
+reformat unrelated files to satisfy it.
 
 ## Version pinning (upgrade rules)
 
@@ -26,6 +33,10 @@ The couplings no config file confesses:
 - **Direct dependencies**: declare the libraries the source imports directly
   (coroutines, SLF4J) instead of relying on transitive versions. Verified:
   `kotlinx-coroutines-core` 1.11.0, `slf4j-api` 2.0.19.
+- **ktlint**: the `1.8.0` engine parses with its own bundled Kotlin compiler,
+  not the project's. A Kotlin language upgrade that the engine can't parse
+  fails the build with a parse error, not a style error — bump ktlint with the
+  Kotlin plugin.
 
 ## Naming
 

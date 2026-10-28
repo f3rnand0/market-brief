@@ -1,0 +1,16 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+[*.{kt,kts}]
+# intellij_idea keeps the wrapping IntelliJ produces, so the IDE and the
+# linter agree. ktlint_official explodes every argument list to one entry per
+# line, which destroys the intentional grouping in this codebase.
+ktlint_code_style = intellij_idea
+max_line_length = 120

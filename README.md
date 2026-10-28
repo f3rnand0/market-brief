@@ -14,8 +14,9 @@ company/sector news — from free web sources and market data.
 
 - JDK 25 (Temurin recommended) — the Gradle wrapper handles the rest.
 
-See [`PRD.md`](PRD.md) for the product spec, [`ARCHITECTURE.md`](ARCHITECTURE.md)
-for the design, and [`GLOSSARY.md`](GLOSSARY.md) for domain vocabulary.
+See [`docs/PRD.md`](docs/PRD.md) for the product spec,
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the design, and
+[`docs/GLOSSARY.md`](docs/GLOSSARY.md) for domain vocabulary.
 
 ## Run
 
@@ -24,8 +25,26 @@ for the design, and [`GLOSSARY.md`](GLOSSARY.md) for domain vocabulary.
 # then: curl http://localhost:8080/health
 ```
 
+`PORT` overrides the default port 8080:
+
+```bash
+PORT=9000 ./gradlew run
+```
+
 ## Test
 
 ```bash
 ./gradlew test
 ```
+
+## Lint
+
+`ktlint` runs as part of `./gradlew build` — a style violation fails the
+build. To check or fix without a full build:
+
+```bash
+./gradlew ktlintCheck
+./gradlew ktlintFormat
+```
+
+Style is configured in [`.editorconfig`](.editorconfig).
