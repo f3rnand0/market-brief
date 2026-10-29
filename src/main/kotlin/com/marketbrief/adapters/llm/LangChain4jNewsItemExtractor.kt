@@ -11,13 +11,12 @@ import com.marketbrief.domain.Source
 import com.marketbrief.domain.Subject
 import dev.langchain4j.data.message.SystemMessage
 import dev.langchain4j.data.message.UserMessage
-import dev.langchain4j.exception.AsyncNotSupportedException
-import dev.langchain4j.exception.AuthenticationException
-import dev.langchain4j.exception.ModelNotFoundException
+import dev.langchain4j.exception.LangChain4jException
 import dev.langchain4j.model.chat.ChatModel
 import dev.langchain4j.model.chat.request.ChatRequest
 import dev.langchain4j.model.chat.request.ResponseFormat
 import dev.langchain4j.model.openai.OpenAiChatModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.future.await
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -42,17 +41,15 @@ class LangChain4jNewsItemExtractor(
         get() = droppedCandidates.get()
 
     override suspend fun extract(article: Article): List<NewsItem> {
+        // Provider and transport failures are systemic: abort the run instead of
+        // saving a report that silently contains no news. Only content-level
+        // failures (empty or malformed output) stay isolated per article.
         val content = try {
             chatModel.chatAsync(request(article)).await().aiMessage().text()
-        } catch (e: AuthenticationException) {
+        } catch (e: CancellationException) {
             throw e
-        } catch (e: ModelNotFoundException) {
+        } catch (e: LangChain4jException) {
             throw e
-        } catch (e: AsyncNotSupportedException) {
-            throw e
-        } catch (e: Exception) {
-            log.warn("Extraction request failed for article {}", article.id, e)
-            return emptyList()
         }
         if (content.isNullOrBlank()) {
             log.warn("Extraction returned no content for article {}", article.id)

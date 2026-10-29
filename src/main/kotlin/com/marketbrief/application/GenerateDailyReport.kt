@@ -13,7 +13,9 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
+import java.time.Clock
 import java.time.LocalDate
+import java.time.ZoneId
 
 class GenerateDailyReport(
     private val marketDataFetcher: MarketDataFetcher,
@@ -22,14 +24,16 @@ class GenerateDailyReport(
     private val reportStore: ReportStore,
     private val instruments: Set<Instrument>,
     private val extractionParallelism: Int = DEFAULT_EXTRACTION_PARALLELISM,
+    private val clock: Clock = Clock.system(REPORT_ZONE),
 ) {
     init {
         require(extractionParallelism > 0) { "extractionParallelism must be positive" }
     }
 
-    suspend fun generate(date: LocalDate): Report = coroutineScope {
+    suspend fun generate(): Report = coroutineScope {
+        val date = LocalDate.now(clock)
         val snapshot = marketDataFetcher.snapshot(instruments)
-        val articles = newsSource.fetch(DayWindow(date))
+        val articles = newsSource.fetch(DayWindow.forReportDate(date))
         // Requests are independent and non-blocking, so fan out under a fixed permit count;
         // awaitAll preserves article order for the eval loop.
         val permits = Semaphore(extractionParallelism)
@@ -44,5 +48,6 @@ class GenerateDailyReport(
 
     companion object {
         const val DEFAULT_EXTRACTION_PARALLELISM = 4
+        val REPORT_ZONE: ZoneId = ZoneId.of("Europe/Berlin")
     }
 }

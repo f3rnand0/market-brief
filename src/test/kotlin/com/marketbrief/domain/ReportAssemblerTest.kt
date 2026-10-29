@@ -14,16 +14,34 @@ class ReportAssemblerTest {
     @Test
     fun `regional news is grouped by region, Global items excluded`() {
         val items = listOf(
-            item(region = Region.US, subject = "Fed"),
-            item(region = Region.CHINA, subject = "PBOC"),
-            item(region = Region.US, subject = "Treasuries"),
-            item(region = Region.GLOBAL, subject = "Oil"),
+            item(type = NewsItemType.MACRO, region = Region.US, subject = "Fed"),
+            item(type = NewsItemType.MACRO, region = Region.CHINA, subject = "PBOC"),
+            item(type = NewsItemType.MACRO, region = Region.US, subject = "Treasuries"),
+            item(type = NewsItemType.MACRO, region = Region.GLOBAL, subject = "Oil"),
         )
 
         val regional = ReportAssembler.assemble(date, snapshot, items).regionalNews
 
         assertEquals(setOf(Region.US, Region.CHINA), regional.keys)
         assertEquals(2, regional[Region.US]!!.size)
+    }
+
+    @Test
+    fun `company and sector items appear only in the company-sector section`() {
+        val company = item(type = NewsItemType.COMPANY, region = Region.US, subject = "Apple")
+        val sector = item(type = NewsItemType.SECTOR, region = Region.GLOBAL, subject = "Semiconductors")
+        val macro = item(type = NewsItemType.MACRO, region = Region.US, subject = "Fed")
+
+        val report = ReportAssembler.assemble(date, snapshot, listOf(company, sector, macro))
+
+        assertEquals(listOf(macro), report.regionalNews[Region.US])
+        assertTrue(
+            report.regionalNews.values.flatten().none {
+                it.type == NewsItemType.COMPANY || it.type == NewsItemType.SECTOR
+            },
+            "company and sector items must not be duplicated into regional sections",
+        )
+        assertEquals(listOf(company, sector), report.companySectorNews)
     }
 
     @Test

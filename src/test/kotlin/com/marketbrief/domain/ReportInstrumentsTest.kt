@@ -45,6 +45,13 @@ class ReportInstrumentsTest {
     }
 
     @Test
+    fun `every summary index matches its own display name`() {
+        for (instrument in ReportInstruments.summaryIndices) {
+            assertEquals(instrument, ReportInstruments.summaryInstrumentFor(instrument.name))
+        }
+    }
+
+    @Test
     fun `ticker symbols are not matched because adapters own them`() {
         assertNull(ReportInstruments.summaryInstrumentFor("^GSPC"))
         assertNull(ReportInstruments.summaryInstrumentFor("^IXIC"))

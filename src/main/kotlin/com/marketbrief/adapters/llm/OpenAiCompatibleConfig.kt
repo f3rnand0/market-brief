@@ -14,4 +14,7 @@ data class OpenAiCompatibleConfig(
         require(requestTimeoutSeconds > 0) { "requestTimeoutSeconds must be positive" }
         require(maxRetries >= 0) { "maxRetries must not be negative" }
     }
+
+    override fun toString(): String = "OpenAiCompatibleConfig(baseUrl=$baseUrl, model=$model, apiKey=***, " +
+        "requestTimeoutSeconds=$requestTimeoutSeconds, maxRetries=$maxRetries)"
 }

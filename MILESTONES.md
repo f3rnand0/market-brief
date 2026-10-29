@@ -76,8 +76,8 @@ tests; fallback kicks in when the primary fixture is absent.
 The LLM seam, behind `NewsItemExtractor`.
 
 - `LangChain4jNewsItemExtractor`: single OpenAI-compatible chat model
-  (`baseUrl`/`model`/`apiKey` from env, ADR-0003), structured output →
-  `NewsItem` candidates.
+  (`baseUrl`/`model` from YAML, `apiKey` from the environment variable named
+  in the YAML, ADR-0003), JSON-object output → `NewsItem` candidates.
 - The internal mapping seam (ARCHITECTURE.md §4): candidates failing the
   citation invariant are dropped and counted; only valid `NewsItem`s cross
   the port.

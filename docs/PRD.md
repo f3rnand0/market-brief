@@ -57,6 +57,8 @@ polish.
    Europe, Latam, Asia.
 4. **Company / sector news** — the most relevant news about the biggest
    companies and sectors, balanced across US / China / Global (not US-only).
+   Each `NewsItem` appears in exactly one section: company and sector items
+   are never duplicated into the regional sections.
 
 ## 6. Domain model
 
@@ -100,7 +102,7 @@ Ollama, OpenRouter, etc. are swappable. Extraction uses LangChain4j
 ## 10. Scheduling & ops
 
 - Runs daily at **09:00 Europe/Berlin** (CET/CEST aware). The data window is
-  the **previous day** (24h ending at generation time).
+  the **previous calendar day**.
 - PoC: on-demand trigger endpoint; JSON snapshots of reports and evals to disk;
   no DB.
 

@@ -1,6 +1,5 @@
 package com.marketbrief.config
 
-import com.marketbrief.adapters.llm.OpenAiCompatibleConfig
 import kotlinx.serialization.Serializable
 
 /**
@@ -23,19 +22,4 @@ data class ApplicationConfig(val llm: LlmConfig) {
             require(apiKeyEnv.isNotBlank()) { "llm.apiKeyEnv must not be blank" }
         }
     }
-}
-
-fun ApplicationConfig.toOpenAiCompatibleConfig(env: Map<String, String> = System.getenv()): OpenAiCompatibleConfig {
-    val apiKey = env[llm.apiKeyEnv]?.takeIf { it.isNotBlank() }
-        ?: throw IllegalStateException(
-            "Missing LLM API key: environment variable ${llm.apiKeyEnv} is not set. " +
-                "Inject it with 1Password: op run --env-file=config/secrets.env -- <command>",
-        )
-    return OpenAiCompatibleConfig(
-        baseUrl = llm.baseUrl,
-        model = llm.model,
-        apiKey = apiKey,
-        requestTimeoutSeconds = llm.requestTimeoutSeconds,
-        maxRetries = llm.maxRetries,
-    )
 }

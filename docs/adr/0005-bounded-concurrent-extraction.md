@@ -14,9 +14,11 @@ The bound exists because providers rate-limit: unbounded fan-out would trade
 latency for `429`s. The permit count is a constructor parameter so the
 composition root can tune it per provider, and LangChain4j retries transient
 failures. Requests use LangChain4j's asynchronous chat API, so a permit holds a
-pending request rather than a blocked thread. A failed article contributes no
-items and does not fail the report; authentication and missing-model failures
-propagate instead of producing an empty report.
+pending request rather than a blocked thread. An article whose model output is
+empty or malformed contributes no items without failing the report. Provider
+and transport failures — authentication, missing model, rate limiting, server
+errors, unreachable endpoints — propagate instead of producing a report with
+no news, and a failed run saves nothing.
 
 Rejected alternative: keeping extraction serial for cost and stable output. Cost
 is the same either way, and order is preserved by construction, so serial

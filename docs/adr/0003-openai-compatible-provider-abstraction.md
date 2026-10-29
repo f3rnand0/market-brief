@@ -10,7 +10,9 @@ The two kinds of configuration are stored differently:
 
 - **Non-sensitive settings** — `baseUrl`, `model`, timeouts, retries, and the
   name of the environment variable that carries the key — live in
-  `config/application.yml`, loaded at startup. They are reviewable in git.
+  `config/application.yml`. They are reviewable in git. The composition root
+  loads them at startup; the wired server lands with M5, and until then the
+  extractor's live test resolves them.
 - **The API key** is a secret and never enters the repository or an adapter.
   It is injected at runtime by 1Password's `op run`, which resolves `op://`
   references from `config/secrets.env` into environment variables. Any other

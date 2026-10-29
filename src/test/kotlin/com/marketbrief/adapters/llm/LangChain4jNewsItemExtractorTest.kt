@@ -6,6 +6,7 @@ import com.marketbrief.domain.NewsItemType
 import com.marketbrief.domain.Region
 import com.sun.net.httpserver.HttpServer
 import dev.langchain4j.exception.AuthenticationException
+import dev.langchain4j.exception.RateLimitException
 import dev.langchain4j.model.openai.OpenAiChatModel
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
@@ -155,6 +156,35 @@ class LangChain4jNewsItemExtractorTest {
             assertFailsWith<AuthenticationException> {
                 runBlocking { extractor(server).extract(article) }
             }
+        }
+    }
+
+    @Test
+    fun `provider rate limiting propagates instead of yielding an empty result`() {
+        StubChatServer("""{"error": "rate limited"}""", status = 429).use { server ->
+            assertFailsWith<RateLimitException> {
+                runBlocking { extractor(server).extract(article) }
+            }
+        }
+    }
+
+    @Test
+    fun `fromConfig wires the provider settings into the chat model`() = runBlocking {
+        StubChatServer("""{"items": []}""").use { server ->
+            val extractor = LangChain4jNewsItemExtractor.fromConfig(
+                OpenAiCompatibleConfig(
+                    baseUrl = server.baseUrl,
+                    model = "stub-model",
+                    apiKey = "test-key",
+                    requestTimeoutSeconds = 30,
+                    maxRetries = 0,
+                ),
+            )
+
+            extractor.extract(article)
+
+            val request = Json.parseToJsonElement(server.requests.single()).jsonObject
+            assertEquals("stub-model", request.getValue("model").jsonPrimitive.content)
         }
     }
 

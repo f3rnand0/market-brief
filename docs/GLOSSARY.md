@@ -74,4 +74,5 @@ The manually labeled ground truth: per-article expected NewsItems and expected
 snapshot facts, used to score the extractor.
 
 **Previous day**:
-The 24-hour window ending at report generation time (09:00 Europe/Berlin).
+The calendar day before the report date; the report is generated on the
+following morning.

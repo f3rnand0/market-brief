@@ -102,10 +102,11 @@ complete; a producer that skips a requested instrument must pass the gap
 explicitly. The type cannot infer completeness because it does not retain the
 requested set.
 
-**`Report`** is the assembled output document: the four sections built from a
-`Snapshot` plus the extracted `NewsItem`s. The summary section also carries
-`otherNews` for GLOBAL `MACRO` and `MARKET_MOVE` items that belong to no
-continent.
+- **`Report`** is the assembled output document: the four sections built from a
+  `Snapshot` plus the extracted `NewsItem`s. Each `NewsItem` appears once:
+  `COMPANY` and `SECTOR` items go to the company/sector section, never the
+  regional sections. The summary section also carries `otherNews` for GLOBAL
+  `MACRO` and `MARKET_MOVE` items that belong to no continent.
 
 **`Article`** is the input aggregate: headline, body, `outlet`, URL, publication
 date.
@@ -145,7 +146,9 @@ sentence per index. An index present in `Snapshot.missing` renders as
 `"<index>: data unavailable."`; a complete snapshot with no index quotes
 renders as "No major index moves." GLOBAL `MACRO` and `MARKET_MOVE` items are
 carried as `Report.otherNews` (the summary's "other important news") rather
-than dropped. Regional ranking, capping, and dedupe are scheduled in M8.
+than dropped. A `COMPANY` or `SECTOR` item appears only in the company/sector
+section; it is never duplicated into the regional sections. Regional ranking,
+capping, and dedupe are scheduled in M8.
 
 ### 2.5 Ports (interfaces owned by the domain)
 
@@ -176,15 +179,16 @@ interface EvalStore {                      // persist / load eval reports
 }
 ```
 
-Each seam is real (two adapters), not hypothetical:
+Each seam is real (two adapters) at completion; rows marked with a milestone
+are planned, not yet implemented:
 
 | Port                | Adapters                                                  |
 |---------------------|-----------------------------------------------------------|
 | `MarketDataFetcher`  | `CompositeMarketDataFetcher` (Yahoo primary + per-asset-class fallbacks) |
-| `NewsSource`        | `RssNewsSource`, `GdeltNewsSource`                        |
+| `NewsSource`        | `RssNewsSource`, `GdeltNewsSource` (M8)                   |
 | `NewsItemExtractor` | `LangChain4jNewsItemExtractor` + deterministic fake (tests/eval) |
-| `ReportStore`       | `JsonReportStore` + in-memory fake (tests)                |
-| `EvalStore`         | `JsonEvalStore` + in-memory fake (tests)              |
+| `ReportStore`       | `JsonReportStore` (M5) + in-memory fake (tests)           |
+| `EvalStore`         | `JsonEvalStore` (M7) + in-memory fake (tests)             |
 
 `QuoteFetcher` is the adapters-internal seam: `YahooQuoteFetcher` and
 `CnbcQuoteFetcher` implement it; only the composite implements the domain port.
@@ -201,7 +205,8 @@ Use cases orchestrate the ports and domain services.
 
 - **`GenerateDailyReport`** — the pipeline:
   1. `MarketDataFetcher.snapshot(...)` → `Snapshot`.
-  2. `NewsSource.fetch(...)` → `Article`s.
+  2. `NewsSource.fetch(...)` → `Article`s from the previous calendar day
+     (`DayWindow.forReportDate(date)`).
   3. `NewsItemExtractor.extract(...)` → valid `NewsItem`s (invalid candidates
      never cross the seam; see §2.3). Articles are extracted concurrently under
      a fixed permit count using the adapter's non-blocking chat call; `awaitAll`
@@ -244,8 +249,8 @@ Concrete adapters implementing the domain ports.
   **OpenAI-compatible** chat model so DeepSeek, Kimi, Ollama, OpenRouter, etc.
   are swappable (ADR-0003); `baseUrl` and `model` come from
   `config/application.yml`, the API key from 1Password via `op run`, and both
-  reach the adapter as an `OpenAiCompatibleConfig`. It uses
-  **structured output** mapping article text → typed `NewsItem`s. Requests use
+  reach the adapter as an `OpenAiCompatibleConfig`. It asks the model for
+  structured JSON and maps it to typed `NewsItem`s. Requests use
   LangChain4j's `chatAsync`, so the port suspends instead of parking a thread.
   The adapter requests OpenAI JSON-object mode with the item shape described in
   its prompt and parses the answer with kotlinx.serialization — the wire
@@ -255,9 +260,11 @@ Concrete adapters implementing the domain ports.
   raw structured output → `NewsItem` mapping is the adapter's internal seam:
   candidates that fail the citation invariant (§2.3) or any other domain
   invariant are dropped and counted (`droppedCandidateCount`) here, so only
-  valid `NewsItem`s cross the port. Per-article request failures are isolated;
-  authentication, missing-model, and async-unsupported failures propagate so a
-  broken configuration fails loudly.
+  valid `NewsItem`s cross the port. Provider and transport failures — including
+  authentication, missing model, rate limiting, server errors, and unreachable
+  endpoints — propagate so a broken configuration or outage fails the run
+  loudly. Only content-level failures, such as empty or malformed model output,
+  are isolated per article.
 - **`JsonReportStore` / `JsonEvalStore`** — persist reports and eval results
   as JSON snapshots to disk (no DB in v1).
 
@@ -317,9 +324,8 @@ Two seams carry the project's risk and are kept deliberately narrow:
 
 As per PRD §9: **Kotlin + Ktor + LangChain4j**, HTML via `kotlinx.html`, JSON
 snapshots (no DB). LangChain4j provides the chat-model client (single
-OpenAI-compatible endpoint) and the **structured-output** machinery that maps
-article prose → typed `NewsItem` candidates inside
-`LangChain4jNewsItemExtractor` (§4).
+OpenAI-compatible endpoint) and JSON-object mode; the adapter owns the mapping
+from the model's JSON answer to typed `NewsItem` candidates (§4).
 
 ---
 

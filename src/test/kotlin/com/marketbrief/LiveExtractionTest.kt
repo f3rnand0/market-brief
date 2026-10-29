@@ -2,8 +2,8 @@ package com.marketbrief
 
 import com.marketbrief.adapters.llm.LangChain4jNewsItemExtractor
 import com.marketbrief.config.ApplicationConfigLoader
-import com.marketbrief.config.toOpenAiCompatibleConfig
 import com.marketbrief.domain.Article
+import com.marketbrief.toOpenAiCompatibleConfig
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Tag
 import java.time.LocalDate

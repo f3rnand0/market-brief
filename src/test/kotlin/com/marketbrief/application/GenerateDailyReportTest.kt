@@ -2,10 +2,12 @@ package com.marketbrief.application
 
 import com.marketbrief.domain.Article
 import com.marketbrief.domain.AssetClass
+import com.marketbrief.domain.DayWindow
 import com.marketbrief.domain.Instrument
 import com.marketbrief.domain.NewsItem
 import com.marketbrief.domain.NewsItemExtractor
 import com.marketbrief.domain.NewsItemType
+import com.marketbrief.domain.NewsSource
 import com.marketbrief.domain.Region
 import com.marketbrief.domain.article
 import com.marketbrief.domain.item
@@ -22,6 +24,7 @@ import java.time.LocalDate
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
 import kotlin.test.assertSame
 import kotlin.time.Duration.Companion.seconds
@@ -84,6 +87,49 @@ class GenerateDailyReportTest {
             report.companySectorNews.flatMap { item -> item.subjects }.map { it.name },
             "concurrent extraction must keep the article order",
         )
+    }
+
+    @Test
+    fun `systemic extraction failure aborts without saving a report`() = runBlocking {
+        val store = InMemoryReportStore()
+        val extractor = object : NewsItemExtractor {
+            override suspend fun extract(article: Article): List<NewsItem> =
+                throw IllegalStateException("provider down")
+        }
+
+        val error = assertFailsWith<IllegalStateException> {
+            GenerateDailyReport(
+                marketDataFetcher = FakeMarketDataFetcher(),
+                newsSource = StaticCorpusNewsSource(listOf(article("a1"))),
+                extractor = extractor,
+                reportStore = store,
+                instruments = instruments,
+            ).generate(date)
+        }
+
+        assertEquals("provider down", error.message)
+        assertNull(store.load(date), "a failed run must not persist a partial report")
+    }
+
+    @Test
+    fun `news window covers the day before the report date`() = runBlocking {
+        val captured = CompletableDeferred<DayWindow>()
+        val newsSource = object : NewsSource {
+            override fun fetch(window: DayWindow): List<Article> {
+                captured.complete(window)
+                return emptyList()
+            }
+        }
+
+        GenerateDailyReport(
+            marketDataFetcher = FakeMarketDataFetcher(),
+            newsSource = newsSource,
+            extractor = DeterministicNewsItemExtractor(emptyMap()),
+            reportStore = InMemoryReportStore(),
+            instruments = instruments,
+        ).generate(date)
+
+        assertEquals(date.minusDays(1), captured.await().date)
     }
 
     @Test

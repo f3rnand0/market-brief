@@ -33,11 +33,13 @@ PORT=9000 ./gradlew run
 
 ## Configuration
 
-Non-sensitive runtime settings live in [`config/application.yml`](config/application.yml):
-the provider `baseUrl` and `model`, the environment variable holding the API
-key (`apiKeyEnv`), the request timeout, and the retry count. Point
-`MARKET_BRIEF_CONFIG` at another file to override the location; the LLM section
-selects any OpenAI-compatible provider.
+Non-sensitive runtime settings for the extractor live in
+[`config/application.yml`](config/application.yml): the provider `baseUrl` and
+`model`, the environment variable holding the API key (`apiKeyEnv`), the request
+timeout, and the retry count. Point `MARKET_BRIEF_CONFIG` at another file to
+override the location; the LLM section selects any OpenAI-compatible provider.
+The `run` server still exposes only `/health`; adapter wiring — and therefore
+startup config validation — lands with M5.
 
 The API key is a secret and never lives in the repository. It is injected from
 1Password at runtime:

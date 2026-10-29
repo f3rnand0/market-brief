@@ -1,5 +1,6 @@
 package com.marketbrief.config
 
+import com.marketbrief.toOpenAiCompatibleConfig
 import java.nio.file.Path
 import kotlin.test.Test
 import kotlin.test.assertEquals

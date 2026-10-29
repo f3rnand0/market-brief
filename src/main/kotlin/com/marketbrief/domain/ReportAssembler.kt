@@ -58,7 +58,7 @@ object ReportAssembler {
     }
 
     private fun regionalSections(items: List<NewsItem>): Map<Region, List<NewsItem>> = items
-        .filter { it.region in REGIONAL_SECTIONS }
+        .filter { it.region in REGIONAL_SECTIONS && !it.isCompanyOrSector }
         .groupBy { it.region }
 
     private fun otherNewsItems(items: List<NewsItem>): List<NewsItem> = items
