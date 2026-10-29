@@ -31,6 +31,20 @@ See [`docs/PRD.md`](docs/PRD.md) for the product spec,
 PORT=9000 ./gradlew run
 ```
 
+The PoC wires a static news corpus, the Yahoo/CNBC market-data adapters, and
+the configured LLM extractor. Generate and read a report:
+
+```bash
+curl -X POST "http://localhost:8080/report/generate?date=2026-10-28"
+curl http://localhost:8080/report/2026-10-28
+curl http://localhost:8080/report/2026-10-28.html
+```
+
+Without `?date`, `POST /report/generate` uses the current report date; its news
+window is the previous calendar day. Reports are persisted as JSON snapshots;
+`storage.reportsDir` in `config/application.yml` selects the directory (default
+`data/reports`).
+
 ## Configuration
 
 Non-sensitive runtime settings for the extractor live in

@@ -97,12 +97,14 @@ run returned 3 cited items and dropped 0 candidates.
 **Learn**: LangChain4j chat models + structured output, provider-swappable
 config, testing LLM adapters without an LLM.
 
-## M5 — Presentation + persistence
+## M5 — Presentation + persistence ✅
 
-Expose the pipeline over HTTP and persist reports.
+Expose the pipeline over HTTP and persist reports. **Done.**
 
 - `JsonReportStore` (JSON snapshots to disk; round-trip test).
 - HTTP DTOs + mapping (never serialize domain directly, ARCHITECTURE.md §5).
+  The serializable report shape lives in `com.marketbrief.wire` and is shared
+  with the store, so the persisted file and the HTTP response match.
 - **Snapshot rendering**: group quotes by asset class in the JSON/HTML layer
   (`Snapshot` stays a flat list; each quote carries `instrument.assetClass`).
   `InstrumentQuote` carries the absolute day change, so fixed income renders

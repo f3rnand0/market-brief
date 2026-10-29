@@ -8,7 +8,14 @@ import kotlinx.serialization.Serializable
  * them (see README).
  */
 @Serializable
-data class ApplicationConfig(val llm: LlmConfig) {
+data class ApplicationConfig(val llm: LlmConfig, val storage: StorageConfig = StorageConfig()) {
+
+    @Serializable
+    data class StorageConfig(val reportsDir: String = "data/reports") {
+        init {
+            require(reportsDir.isNotBlank()) { "storage.reportsDir must not be blank" }
+        }
+    }
 
     @Serializable
     data class LlmConfig(

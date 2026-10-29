@@ -48,6 +48,34 @@ class ApplicationConfigLoaderTest {
     }
 
     @Test
+    fun `parses the report storage directory`() {
+        val config = ApplicationConfigLoader.parse(
+            """
+            llm:
+              baseUrl: https://api.example.com/v1
+              model: some-model
+            storage:
+              reportsDir: /var/lib/market-brief/reports
+            """.trimIndent(),
+        )
+
+        assertEquals("/var/lib/market-brief/reports", config.storage.reportsDir)
+    }
+
+    @Test
+    fun `defaults the report storage directory`() {
+        val config = ApplicationConfigLoader.parse(
+            """
+            llm:
+              baseUrl: https://api.example.com/v1
+              model: some-model
+            """.trimIndent(),
+        )
+
+        assertEquals("data/reports", config.storage.reportsDir)
+    }
+
+    @Test
     fun `loads the repository config file`() {
         val config = ApplicationConfigLoader.load(Path.of(ApplicationConfigLoader.DEFAULT_PATH))
 

@@ -30,8 +30,7 @@ class GenerateDailyReport(
         require(extractionParallelism > 0) { "extractionParallelism must be positive" }
     }
 
-    suspend fun generate(): Report = coroutineScope {
-        val date = LocalDate.now(clock)
+    suspend fun generate(date: LocalDate = LocalDate.now(clock)): Report = coroutineScope {
         val snapshot = marketDataFetcher.snapshot(instruments)
         val articles = newsSource.fetch(DayWindow.forReportDate(date))
         // Requests are independent and non-blocking, so fan out under a fixed permit count;

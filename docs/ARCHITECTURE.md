@@ -63,7 +63,8 @@ objects.
 | domain         | `com.marketbrief.domain`     | nothing (pure Kotlin)     |
 | application    | `com.marketbrief.application`| domain                    |
 | adapters       | `com.marketbrief.adapters`   | domain (+ 3rd-party libs) |
-| presentation   | `com.marketbrief.http`       | application               |
+| wire           | `com.marketbrief.wire`       | domain (shared serializable report shape) |
+| presentation   | `com.marketbrief.http`       | application + wire        |
 | composition root | `com.marketbrief` (`main`) | application + adapters + http |
 
 ---
@@ -244,7 +245,8 @@ Concrete adapters implementing the domain ports.
   malformed element does not discard the batch. The composite records
   unresolved instruments in `Snapshot.missing` and logs the gap.
 - **`RssNewsSource` / `GdeltNewsSource`** — free news ingestion (Google News RSS
-  / GDELT backbone + curated RSS list).
+  / GDELT backbone + curated RSS list). Until M8 replaces it, the PoC wires
+  `JsonCorpusNewsSource` with the packaged static corpus.
 - **`LangChain4jNewsItemExtractor`** — the LLM adapter. Uses a single
   **OpenAI-compatible** chat model so DeepSeek, Kimi, Ollama, OpenRouter, etc.
   are swappable (ADR-0003); `baseUrl` and `model` come from
@@ -266,14 +268,21 @@ Concrete adapters implementing the domain ports.
   loudly. Only content-level failures, such as empty or malformed model output,
   are isolated per article.
 - **`JsonReportStore` / `JsonEvalStore`** — persist reports and eval results
-  as JSON snapshots to disk (no DB in v1).
-
----
+  as JSON snapshots to disk (no DB in v1). The report store writes the shared
+  wire representation (see §5), so the persisted file and the HTTP response are
+  the same shape.
 
 ## 5. Presentation layer (`http/`)
 
 Ktor server exposing a small JSON/HTML API. Domain objects are **not**
-serialized directly; the layer maps to its own `@Serializable` DTOs.
+serialized directly; `com.marketbrief.wire` owns the `@Serializable` report
+shape, and both the presentation layer and `JsonReportStore` map through it.
+
+The snapshot stays a flat list in the domain. The wire mapper groups quotes by
+`instrument.assetClass` for rendering and formats each quote once: fixed income
+as `4.995 (+0.9 bp, +0.18%)`, other asset classes as value plus percent. Missing
+instruments travel as `missing` inside their asset-class group and render as
+"data unavailable" (ADR-0006), never as a market fact.
 
 | Method | Path                       | Purpose                          |
 |--------|----------------------------|----------------------------------|
@@ -283,6 +292,11 @@ serialized directly; the layer maps to its own `@Serializable` DTOs.
 | GET    | `/report/{date}.html`      | Rendered HTML (kotlinx.html)     |
 | POST   | `/eval/run`                | Trigger `RunEval`                |
 | GET    | `/eval/{id}`               | Eval report                      |
+
+`POST /report/generate` accepts an optional `?date=YYYY-MM-DD`; without it the
+report date is the current day and its news window is the previous calendar day.
+An invalid date returns `400`; an absent stored report returns `404` with a JSON
+error.
 
 ---
 

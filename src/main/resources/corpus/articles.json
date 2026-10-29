@@ -1,0 +1,66 @@
+[
+  {
+    "id": "corpus-us-fed",
+    "headline": "Stocks slip as Fed officials signal higher-for-longer rates",
+    "body": "US equities fell on Tuesday after two Federal Reserve officials said the central bank was in no hurry to cut interest rates. The S&P 500 dropped 0.8% and the Nasdaq Composite fell 1.1%. The US 10-year Treasury yield rose 0.9 basis points to 4.995% as traders pushed back expectations for easing.",
+    "outlet": "Reuters",
+    "url": "https://example.com/corpus/us-fed",
+    "publishedAt": "2026-10-28"
+  },
+  {
+    "id": "corpus-china-pboc",
+    "headline": "PBOC cuts reserve requirements to support growth",
+    "body": "The People's Bank of China cut the reserve requirement ratio for major banks by 25 basis points, its first reduction this year. The Shanghai Composite rose 0.9% and the Hang Seng gained 1.4% on the news. The PBOC said the move would release long-term liquidity to support credit growth.",
+    "outlet": "South China Morning Post",
+    "url": "https://example.com/corpus/china-pboc",
+    "publishedAt": "2026-10-28"
+  },
+  {
+    "id": "corpus-europe-ecb",
+    "headline": "Eurozone inflation eases, lifting European shares",
+    "body": "Eurozone consumer price inflation slowed to 2.1% in October from 2.3% in September, matching forecasts. The STOXX Europe 600 rose 0.6% and the DAX 40 added 0.8%. The European Central Bank is expected to keep its deposit rate unchanged at its next meeting.",
+    "outlet": "Financial Times",
+    "url": "https://example.com/corpus/europe-ecb",
+    "publishedAt": "2026-10-28"
+  },
+  {
+    "id": "corpus-latam-brazil",
+    "headline": "Brazil central bank holds Selic rate at 12.25%",
+    "body": "Brazil's central bank kept its benchmark Selic rate at 12.25% for a third meeting, citing persistent services inflation. The Ibovespa rose 0.3% after the decision. Policymakers said they would remain vigilant and did not signal a cut before December.",
+    "outlet": "Valor Economico",
+    "url": "https://example.com/corpus/latam-brazil",
+    "publishedAt": "2026-10-28"
+  },
+  {
+    "id": "corpus-asia-boj",
+    "headline": "Bank of Japan keeps policy rate unchanged",
+    "body": "The Bank of Japan left its short-term policy rate unchanged at 0.5% and said it would keep assessing wage growth before another hike. The Nikkei 225 fell 0.4% while the yen weakened modestly against the dollar. The Japan 10-year yield was little changed.",
+    "outlet": "Nikkei Asia",
+    "url": "https://example.com/corpus/asia-boj",
+    "publishedAt": "2026-10-28"
+  },
+  {
+    "id": "corpus-global-opec",
+    "headline": "OPEC+ extends output cuts, pushing oil higher",
+    "body": "OPEC+ agreed to extend its voluntary production cuts through the first quarter of next year. Brent crude rose 1.2% to $78.40 a barrel and WTI gained 1.1%. The group said the decision reflected a cautious view of demand.",
+    "outlet": "Bloomberg",
+    "url": "https://example.com/corpus/global-opec",
+    "publishedAt": "2026-10-28"
+  },
+  {
+    "id": "corpus-company-nvidia",
+    "headline": "Nvidia forecasts strong data-center demand",
+    "body": "Nvidia reported quarterly data-center revenue of $42 billion, above analyst estimates, and guided to further growth next quarter. The company said demand for its AI accelerators remained supply constrained. Nvidia shares rose 3.2% in after-hours trading.",
+    "outlet": "CNBC",
+    "url": "https://example.com/corpus/company-nvidia",
+    "publishedAt": "2026-10-28"
+  },
+  {
+    "id": "corpus-sector-semiconductors",
+    "headline": "Semiconductor stocks rally on AI spending",
+    "body": "Semiconductor shares climbed after several cloud providers raised their capital spending forecasts for AI infrastructure. The Philadelphia Semiconductor Index rose 2.4%. Analysts said advanced packaging capacity remains the main bottleneck for chipmakers.",
+    "outlet": "Barron's",
+    "url": "https://example.com/corpus/sector-semiconductors",
+    "publishedAt": "2026-10-28"
+  }
+]

@@ -10,6 +10,9 @@ build/
 # Local 1Password references (environment-specific)
 config/secrets.env
 
+# Generated reports
+data/
+
 # Compiled class file
 *.class
 

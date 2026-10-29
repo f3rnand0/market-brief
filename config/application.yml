@@ -7,3 +7,7 @@ llm:
   apiKeyEnv: LLM_API_KEY
   requestTimeoutSeconds: 120
   maxRetries: 2
+
+# Generated reports are JSON snapshots on disk (PRD §3: no database).
+storage:
+  reportsDir: data/reports
