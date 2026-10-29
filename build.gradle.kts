@@ -13,8 +13,14 @@ repositories {
 }
 
 val ktorVersion = "3.6.0"
+val langchain4jVersion = "1.23.0"
 
 dependencies {
+    implementation(platform("dev.langchain4j:langchain4j-bom:$langchain4jVersion"))
+    implementation("dev.langchain4j:langchain4j-core")
+    implementation("dev.langchain4j:langchain4j-open-ai")
+    implementation("com.charleskorn.kaml:kaml:0.104.0")
+
     implementation("io.ktor:ktor-server-core:$ktorVersion")
     implementation("io.ktor:ktor-server-netty:$ktorVersion")
     implementation("io.ktor:ktor-server-content-negotiation:$ktorVersion")
@@ -37,6 +43,13 @@ kotlin {
 
 application {
     mainClass.set("com.marketbrief.ApplicationKt")
+}
+
+tasks.register<JavaExec>("smokeExtraction") {
+    group = "verification"
+    description = "Runs one extraction against the configured LLM (manual smoke run)."
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass.set("com.marketbrief.ExtractionSmokeKt")
 }
 
 tasks.test {

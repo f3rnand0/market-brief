@@ -29,6 +29,9 @@ The couplings no config file confesses:
 - **`kotlinx-serialization-json`**: coupled to the Kotlin compiler; bump in
   lockstep with the Kotlin plugin.
 - **LangChain4j**: align all `langchain4j*` modules via the `langchain4j-bom`.
+  Verified: 1.23.0 (`langchain4j-core` + `langchain4j-open-ai`).
+- **kaml**: YAML decoding for runtime config. Verified: 0.104.0 with
+  kotlinx-serialization 1.12.0.
 - **Ktor**: keep every module on the single `ktorVersion` constant.
 - **Direct dependencies**: declare the libraries the source imports directly
   (coroutines, SLF4J) instead of relying on transitive versions. Verified:

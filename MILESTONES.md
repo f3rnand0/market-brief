@@ -71,7 +71,7 @@ tests; fallback kicks in when the primary fixture is absent.
 **Learn**: Ktor client / HTTP, kotlinx.serialization, coroutines
 (`async`/`await`), composite adapter pattern.
 
-## M4 — LangChain4j extractor
+## M4 — LangChain4j extractor ✅
 
 The LLM seam, behind `NewsItemExtractor`.
 
@@ -83,15 +83,14 @@ The LLM seam, behind `NewsItemExtractor`.
   the port.
 - Test with a stubbed HTTP server returning canned structured output — no
   live LLM in unit tests.
-- **Extraction throughput** (prune review Q-3): `GenerateDailyReport` extracts
-  serially (`articles.flatMap(extractor::extract)`), so 30–40 articles cost the
-  sum of every LLM round-trip. No doc requires serial order; decide here between
-  concurrent extraction (bounded fan-out) and keeping it serial for cost and
-  stable eval output, and record the choice.
+- **Extraction throughput** (prune review Q-3): `GenerateDailyReport` now
+  extracts concurrently under a bounded fan-out (default 4 in flight), and
+  preserves article order before assembly. Decision recorded in ADR-0005.
 
 **Done when**: fixture-backed tests cover valid extraction, dropped
 uncited candidates, and drop counts; one manual smoke run against a real
-provider (key from env).
+provider (key from env). Verified against the configured provider: the smoke
+run returned 3 cited items and dropped 0 candidates.
 **Learn**: LangChain4j chat models + structured output, provider-swappable
 config, testing LLM adapters without an LLM.
 

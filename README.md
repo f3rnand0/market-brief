@@ -31,6 +31,39 @@ See [`docs/PRD.md`](docs/PRD.md) for the product spec,
 PORT=9000 ./gradlew run
 ```
 
+## Configuration
+
+Non-sensitive runtime settings live in [`config/application.yml`](config/application.yml).
+Point `MARKET_BRIEF_CONFIG` at another file to override the location. The LLM
+section selects any OpenAI-compatible provider:
+
+```yaml
+llm:
+  baseUrl: https://api.deepseek.com/v1
+  model: deepseek-chat
+  apiKeyEnv: LLM_API_KEY
+  requestTimeoutSeconds: 120
+  maxRetries: 2
+```
+
+The API key is a secret and never lives in the repository. It is injected from
+1Password at runtime:
+
+```bash
+cp config/secrets.env.example config/secrets.env   # then edit the op:// reference
+op run --env-file=config/secrets.env -- ./gradlew run
+```
+
+`config/secrets.env` holds only 1Password references (`op://vault/item/field`),
+not the secret itself, and is gitignored. Any other injection mechanism works
+too — the app reads whatever variable `llm.apiKeyEnv` names.
+
+Manual smoke run of the extractor against the configured provider:
+
+```bash
+op run --env-file=config/secrets.env -- ./gradlew smokeExtraction
+```
+
 ## Test
 
 ```bash

@@ -8,6 +8,12 @@ import com.marketbrief.domain.NewsSource
 import com.marketbrief.domain.Report
 import com.marketbrief.domain.ReportAssembler
 import com.marketbrief.domain.ReportStore
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import java.time.LocalDate
 
 class GenerateDailyReport(
@@ -16,13 +22,28 @@ class GenerateDailyReport(
     private val extractor: NewsItemExtractor,
     private val reportStore: ReportStore,
     private val instruments: Set<Instrument>,
+    private val extractionParallelism: Int = DEFAULT_EXTRACTION_PARALLELISM,
 ) {
-    suspend fun generate(date: LocalDate): Report {
+    init {
+        require(extractionParallelism > 0) { "extractionParallelism must be positive" }
+    }
+
+    suspend fun generate(date: LocalDate): Report = coroutineScope {
         val snapshot = marketDataFetcher.snapshot(instruments)
         val articles = newsSource.fetch(DayWindow(date))
-        val items = articles.flatMap(extractor::extract)
+        // One failed article must not sink the report, and per-article responses are independent,
+        // so fan out under a fixed permit count: awaitAll preserves article order for the eval loop.
+        val permits = Semaphore(extractionParallelism)
+        val items = articles
+            .map { article -> async(Dispatchers.IO) { permits.withPermit { extractor.extract(article) } } }
+            .awaitAll()
+            .flatten()
         val report = ReportAssembler.assemble(date, snapshot, items)
         reportStore.save(report)
-        return report
+        report
+    }
+
+    companion object {
+        const val DEFAULT_EXTRACTION_PARALLELISM = 4
     }
 }

@@ -7,6 +7,9 @@ build/
 .idea/
 *.iml
 
+# Local 1Password references (environment-specific)
+config/secrets.env
+
 # Compiled class file
 *.class
 

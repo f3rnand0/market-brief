@@ -51,6 +51,13 @@ There is **no edge between application and adapters**. Use cases depend
 on domain ports; adapters implement them; the composition root connects the
 two. That is what keeps the dependency graph acyclic.
 
+Runtime configuration also belongs to the composition root: non-sensitive
+settings come from `config/application.yml` (path overridable with
+`MARKET_BRIEF_CONFIG`), while the LLM API key is injected as an environment
+variable by 1Password's `op run` — the variable is named in the YAML. Adapters
+never read the file or the environment themselves; they receive plain config
+objects.
+
 | Layer          | Package                      | Depends on                |
 |----------------|------------------------------|---------------------------|
 | domain         | `com.marketbrief.domain`     | nothing (pure Kotlin)     |
@@ -192,7 +199,9 @@ Use cases orchestrate the ports and domain services.
   1. `MarketDataFetcher.snapshot(...)` → `Snapshot`.
   2. `NewsSource.fetch(...)` → `Article`s.
   3. `NewsItemExtractor.extract(...)` → valid `NewsItem`s (invalid candidates
-     never cross the seam; see §2.3).
+     never cross the seam; see §2.3). Articles are extracted concurrently under
+     a fixed permit count; `awaitAll` preserves article order before assembly
+     (ADR-0005).
   4. Section assembly → `Report`.
   5. `ReportStore.save(...)`.
 - **`RunEval`** — runs the gold set against the extractor and produces the
@@ -227,13 +236,20 @@ Concrete adapters implementing the domain ports.
 - **`RssNewsSource` / `GdeltNewsSource`** — free news ingestion (Google News RSS
   / GDELT backbone + curated RSS list).
 - **`LangChain4jNewsItemExtractor`** — the LLM adapter. Uses a single
-  **OpenAI-compatible** chat model (`baseUrl` + `model` + `apiKey` from env) so
-  DeepSeek, Kimi, Ollama, OpenRouter, etc. are swappable (ADR-0003), with
-  **structured output** mapping article text → typed `NewsItem`s. The raw
-  structured output → `NewsItem` mapping is the adapter's internal seam:
-  candidates that fail the citation invariant (§2.3) are dropped and recorded
-  here (as extraction-failure counts, feeding the eval metrics in §6), so only
-  valid `NewsItem`s cross the port.
+  **OpenAI-compatible** chat model so DeepSeek, Kimi, Ollama, OpenRouter, etc.
+  are swappable (ADR-0003); `baseUrl` and `model` come from
+  `config/application.yml`, the API key from 1Password via `op run`, and both
+  reach the adapter as an `OpenAiCompatibleConfig`. It uses
+  **structured output** mapping article text → typed `NewsItem`s. The adapter
+  requests OpenAI JSON-object mode with the item shape described in its prompt
+  and parses the answer with kotlinx.serialization — the wire contract stays
+  explicit instead of leaning on provider-specific JSON-schema machinery. The
+  citation's `articleId` is the input `Article`'s id, never something the model
+  echoes back; the model supplies only the quote spans. The raw structured
+  output → `NewsItem` mapping is the adapter's internal seam: candidates that
+  fail the citation invariant (§2.3) or any other domain invariant are dropped
+  and counted (`droppedCandidateCount`) here, so only valid `NewsItem`s cross
+  the port.
 - **`JsonReportStore` / `JsonEvalStore`** — persist reports and eval results
   as JSON snapshots to disk (no DB in v1).
 
