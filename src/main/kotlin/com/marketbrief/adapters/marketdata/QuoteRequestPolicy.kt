@@ -25,7 +25,7 @@ internal object QuoteRequestPolicy {
         withTimeout(timeout) {
             val response = request()
             if (!response.status.isSuccess()) {
-                log.warn("{} returned {} for {}", source, response.status, target)
+                log.debug("{} returned {} for {}", source, response.status, target)
                 return@withTimeout null
             }
             response.bodyAsText()

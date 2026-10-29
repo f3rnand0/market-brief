@@ -4,6 +4,7 @@ import com.marketbrief.adapters.llm.LangChain4jNewsItemExtractor
 import com.marketbrief.config.ApplicationConfigLoader
 import com.marketbrief.config.toOpenAiCompatibleConfig
 import com.marketbrief.domain.Article
+import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Tag
 import java.time.LocalDate
 import kotlin.test.Test
@@ -34,7 +35,7 @@ class LiveExtractionTest {
     )
 
     @Test
-    fun `extracts cited items from the configured provider`() {
+    fun `extracts cited items from the configured provider`() = runBlocking {
         val config = ApplicationConfigLoader.load().toOpenAiCompatibleConfig()
         val extractor = LangChain4jNewsItemExtractor.fromConfig(config)
 

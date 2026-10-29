@@ -13,7 +13,11 @@ interface NewsSource {
 }
 
 interface NewsItemExtractor {
-    fun extract(article: Article): List<NewsItem>
+    /**
+     * Returns only valid items. Adapters isolate per-article failures by returning
+     * no items; systemic provider failures, such as invalid credentials, propagate.
+     */
+    suspend fun extract(article: Article): List<NewsItem>
 }
 
 interface ReportStore {

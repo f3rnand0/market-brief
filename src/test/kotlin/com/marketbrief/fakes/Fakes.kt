@@ -25,7 +25,7 @@ class StaticCorpusNewsSource(private val articles: List<Article>) : NewsSource {
 
 class DeterministicNewsItemExtractor(private val itemsByArticleId: Map<String, List<NewsItem>>) :
     NewsItemExtractor {
-    override fun extract(article: Article): List<NewsItem> = itemsByArticleId[article.id].orEmpty()
+    override suspend fun extract(article: Article): List<NewsItem> = itemsByArticleId[article.id].orEmpty()
 }
 
 class InMemoryReportStore : ReportStore {

@@ -5,7 +5,9 @@ import com.marketbrief.domain.Direction
 import com.marketbrief.domain.NewsItemType
 import com.marketbrief.domain.Region
 import com.sun.net.httpserver.HttpServer
+import dev.langchain4j.exception.AuthenticationException
 import dev.langchain4j.model.openai.OpenAiChatModel
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
@@ -19,6 +21,7 @@ import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.Executors
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 class LangChain4jNewsItemExtractorTest {
@@ -33,7 +36,7 @@ class LangChain4jNewsItemExtractorTest {
     )
 
     @Test
-    fun `maps cited candidates and injects the article id into the citation`() {
+    fun `maps cited candidates and injects the article id into the citation`() = runBlocking {
         val content = """
             {"items": [
               {
@@ -76,7 +79,7 @@ class LangChain4jNewsItemExtractorTest {
     }
 
     @Test
-    fun `drops candidates that violate domain invariants and counts them`() {
+    fun `drops candidates that violate domain invariants and counts them`() = runBlocking {
         val content = """
             {"items": [
               {
@@ -115,7 +118,7 @@ class LangChain4jNewsItemExtractorTest {
     }
 
     @Test
-    fun `requests a json-object completion and sends the article text`() {
+    fun `requests a json-object completion and sends the article text`() = runBlocking {
         StubChatServer("""{"items": []}""").use { server ->
             extractor(server).extract(article)
 
@@ -137,12 +140,21 @@ class LangChain4jNewsItemExtractorTest {
     }
 
     @Test
-    fun `malformed structured output yields no items`() {
+    fun `malformed structured output yields no items`() = runBlocking {
         StubChatServer("not json at all").use { server ->
             val extractor = extractor(server)
 
             assertTrue(extractor.extract(article).isEmpty())
             assertEquals(0, extractor.droppedCandidateCount)
+        }
+    }
+
+    @Test
+    fun `authentication failures escape the per-article isolation`() {
+        StubChatServer("""{"items": []}""", status = 401).use { server ->
+            assertFailsWith<AuthenticationException> {
+                runBlocking { extractor(server).extract(article) }
+            }
         }
     }
 
@@ -160,7 +172,7 @@ class LangChain4jNewsItemExtractorTest {
  * Minimal OpenAI-compatible endpoint: returns [content] as the assistant message
  * of every completion and records the raw request bodies.
  */
-private class StubChatServer(content: String) : AutoCloseable {
+private class StubChatServer(content: String, private val status: Int = 200) : AutoCloseable {
 
     val requests = CopyOnWriteArrayList<String>()
 
@@ -171,7 +183,7 @@ private class StubChatServer(content: String) : AutoCloseable {
             requests += exchange.requestBody.use { it.readBytes() }.decodeToString()
             val body = completion(content).toByteArray()
             exchange.responseHeaders.set("Content-Type", "application/json")
-            exchange.sendResponseHeaders(200, body.size.toLong())
+            exchange.sendResponseHeaders(status, body.size.toLong())
             exchange.responseBody.use { it.write(body) }
         }
         http.executor = executor

@@ -33,18 +33,11 @@ PORT=9000 ./gradlew run
 
 ## Configuration
 
-Non-sensitive runtime settings live in [`config/application.yml`](config/application.yml).
-Point `MARKET_BRIEF_CONFIG` at another file to override the location. The LLM
-section selects any OpenAI-compatible provider:
-
-```yaml
-llm:
-  baseUrl: https://api.deepseek.com/v1
-  model: deepseek-chat
-  apiKeyEnv: LLM_API_KEY
-  requestTimeoutSeconds: 120
-  maxRetries: 2
-```
+Non-sensitive runtime settings live in [`config/application.yml`](config/application.yml):
+the provider `baseUrl` and `model`, the environment variable holding the API
+key (`apiKeyEnv`), the request timeout, and the retry count. Point
+`MARKET_BRIEF_CONFIG` at another file to override the location; the LLM section
+selects any OpenAI-compatible provider.
 
 The API key is a secret and never lives in the repository. It is injected from
 1Password at runtime:

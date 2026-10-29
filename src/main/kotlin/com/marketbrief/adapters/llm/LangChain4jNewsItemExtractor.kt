@@ -11,10 +11,14 @@ import com.marketbrief.domain.Source
 import com.marketbrief.domain.Subject
 import dev.langchain4j.data.message.SystemMessage
 import dev.langchain4j.data.message.UserMessage
+import dev.langchain4j.exception.AsyncNotSupportedException
+import dev.langchain4j.exception.AuthenticationException
+import dev.langchain4j.exception.ModelNotFoundException
 import dev.langchain4j.model.chat.ChatModel
 import dev.langchain4j.model.chat.request.ChatRequest
 import dev.langchain4j.model.chat.request.ResponseFormat
 import dev.langchain4j.model.openai.OpenAiChatModel
+import kotlinx.coroutines.future.await
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
@@ -37,9 +41,15 @@ class LangChain4jNewsItemExtractor(
     val droppedCandidateCount: Long
         get() = droppedCandidates.get()
 
-    override fun extract(article: Article): List<NewsItem> {
+    override suspend fun extract(article: Article): List<NewsItem> {
         val content = try {
-            chatModel.chat(request(article)).aiMessage().text()
+            chatModel.chatAsync(request(article)).await().aiMessage().text()
+        } catch (e: AuthenticationException) {
+            throw e
+        } catch (e: ModelNotFoundException) {
+            throw e
+        } catch (e: AsyncNotSupportedException) {
+            throw e
         } catch (e: Exception) {
             log.warn("Extraction request failed for article {}", article.id, e)
             return emptyList()
@@ -72,7 +82,7 @@ class LangChain4jNewsItemExtractor(
         .responseFormat(ResponseFormat.JSON)
         .build()
 
-    private fun toNewsItem(article: Article, candidate: CandidateItem): NewsItem? = runCatching {
+    private fun toNewsItem(article: Article, candidate: CandidateItem): NewsItem? = try {
         NewsItem(
             type = enumValueOf<NewsItemType>(candidate.type.orEmpty().trim().uppercase()),
             region = enumValueOf<Region>(candidate.region.orEmpty().trim().uppercase()),
@@ -87,9 +97,9 @@ class LangChain4jNewsItemExtractor(
                 quotes = candidate.source?.quotes.orEmpty().map { it.trim() }.filter { it.isNotEmpty() },
             ),
         )
-    }.getOrElse { error ->
+    } catch (e: IllegalArgumentException) {
         droppedCandidates.incrementAndGet()
-        log.debug("Dropped candidate for article {}: {}", article.id, error.message)
+        log.debug("Dropped candidate for article {}: {}", article.id, e.message)
         null
     }
 
@@ -119,11 +129,11 @@ class LangChain4jNewsItemExtractor(
 
             Return ONLY a JSON object with this shape:
             {"items": [{
-              "type": "MARKET_MOVE" | "COMPANY" | "SECTOR" | "MACRO",
-              "region": "US" | "CHINA" | "EUROPE" | "LATAM" | "ASIA" | "GLOBAL",
+              "type": ${quotedNames(NewsItemType.entries)},
+              "region": ${quotedNames(Region.entries)},
               "subjects": ["company, ticker, sector, index, or asset class", ...],
               "assertion": "one sentence stating the claim",
-              "direction": "UP" | "DOWN" | "FLAT" | null,
+              "direction": ${quotedNames(Direction.entries)} | null,
               "cause": "reason for the move" | null,
               "metrics": [{"value": "-1.2", "unit": "%"}],
               "source": {"quotes": ["verbatim span copied from the article"]}
@@ -138,6 +148,8 @@ class LangChain4jNewsItemExtractor(
             - "metrics" holds numbers stated in the article, each with its unit; use [] when there are none.
             - Return {"items": []} when the article carries no relevant market information.
         """.trimIndent()
+
+        private fun quotedNames(values: Collection<Enum<*>>): String = values.joinToString(" | ") { "\"${it.name}\"" }
     }
 }
 

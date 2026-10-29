@@ -20,11 +20,7 @@ data class ApplicationConfig(val llm: LlmConfig) {
         val maxRetries: Int = 2,
     ) {
         init {
-            require(baseUrl.isNotBlank()) { "llm.baseUrl must not be blank" }
-            require(model.isNotBlank()) { "llm.model must not be blank" }
             require(apiKeyEnv.isNotBlank()) { "llm.apiKeyEnv must not be blank" }
-            require(requestTimeoutSeconds > 0) { "llm.requestTimeoutSeconds must be positive" }
-            require(maxRetries >= 0) { "llm.maxRetries must not be negative" }
         }
     }
 }

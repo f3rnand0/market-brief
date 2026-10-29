@@ -15,7 +15,7 @@ object ApplicationConfigLoader {
     private val yaml = Yaml(configuration = YamlConfiguration(strictMode = false))
 
     fun load(env: Map<String, String> = System.getenv()): ApplicationConfig =
-        load(Path.of(env[PATH_ENV] ?: DEFAULT_PATH))
+        load(Path.of(env[PATH_ENV]?.takeIf { it.isNotBlank() } ?: DEFAULT_PATH))
 
     fun load(path: Path): ApplicationConfig {
         val text = try {
@@ -29,6 +29,8 @@ object ApplicationConfigLoader {
     fun parse(text: String): ApplicationConfig = try {
         yaml.decodeFromString(ApplicationConfig.serializer(), text)
     } catch (e: SerializationException) {
+        throw IllegalStateException("Invalid application config: ${e.message}", e)
+    } catch (e: IllegalArgumentException) {
         throw IllegalStateException("Invalid application config: ${e.message}", e)
     }
 }

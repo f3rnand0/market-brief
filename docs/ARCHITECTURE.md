@@ -96,7 +96,11 @@ article:
 requested `Instrument`s that could not be resolved (`missing`). The report
 groups quotes by asset class when rendered. Its numbers come from a market-data
 API — **never** from article prose (ADR-0001). Missing instruments stay
-explicit so absence is never rendered as a market fact (ADR-0005).
+explicit so absence is never rendered as a market fact (ADR-0006).
+`missing` defaults to `emptySet()` for callers that know the snapshot is
+complete; a producer that skips a requested instrument must pass the gap
+explicitly. The type cannot infer completeness because it does not retain the
+requested set.
 
 **`Report`** is the assembled output document: the four sections built from a
 `Snapshot` plus the extracted `NewsItem`s. The summary section also carries
@@ -158,7 +162,7 @@ interface NewsSource {                     // free news ingestion
 }
 
 interface NewsItemExtractor {              // the LLM seam (LangChain4j)
-    fun extract(article: Article): List<NewsItem>
+    suspend fun extract(article: Article): List<NewsItem>
 }
 
 interface ReportStore {                    // persist / load reports
@@ -200,8 +204,8 @@ Use cases orchestrate the ports and domain services.
   2. `NewsSource.fetch(...)` → `Article`s.
   3. `NewsItemExtractor.extract(...)` → valid `NewsItem`s (invalid candidates
      never cross the seam; see §2.3). Articles are extracted concurrently under
-     a fixed permit count; `awaitAll` preserves article order before assembly
-     (ADR-0005).
+     a fixed permit count using the adapter's non-blocking chat call; `awaitAll`
+     preserves article order before assembly (ADR-0005).
   4. Section assembly → `Report`.
   5. `ReportStore.save(...)`.
 - **`RunEval`** — runs the gold set against the extractor and produces the
@@ -212,8 +216,9 @@ hides the whole orchestration. Tests cross the same seam as callers — the use
 case is driven with in-memory port fakes, never by reaching past the
 interface.
 
-`GenerateDailyReport.generate` is `suspend`: the `MarketDataFetcher` port is
-suspending, and the HTTP layer calls the use case from its request coroutine.
+`GenerateDailyReport.generate` is `suspend`: the `MarketDataFetcher` and
+`NewsItemExtractor` ports are suspending, and the HTTP layer calls the use case
+from its request coroutine.
 
 A scheduler (wired in the composition root, not part of the use case) triggers
 `GenerateDailyReport` at 09:00 Europe/Berlin (CET/CEST aware); the PoC also
@@ -240,16 +245,19 @@ Concrete adapters implementing the domain ports.
   are swappable (ADR-0003); `baseUrl` and `model` come from
   `config/application.yml`, the API key from 1Password via `op run`, and both
   reach the adapter as an `OpenAiCompatibleConfig`. It uses
-  **structured output** mapping article text → typed `NewsItem`s. The adapter
-  requests OpenAI JSON-object mode with the item shape described in its prompt
-  and parses the answer with kotlinx.serialization — the wire contract stays
-  explicit instead of leaning on provider-specific JSON-schema machinery. The
-  citation's `articleId` is the input `Article`'s id, never something the model
-  echoes back; the model supplies only the quote spans. The raw structured
-  output → `NewsItem` mapping is the adapter's internal seam: candidates that
-  fail the citation invariant (§2.3) or any other domain invariant are dropped
-  and counted (`droppedCandidateCount`) here, so only valid `NewsItem`s cross
-  the port.
+  **structured output** mapping article text → typed `NewsItem`s. Requests use
+  LangChain4j's `chatAsync`, so the port suspends instead of parking a thread.
+  The adapter requests OpenAI JSON-object mode with the item shape described in
+  its prompt and parses the answer with kotlinx.serialization — the wire
+  contract stays explicit instead of leaning on provider-specific JSON-schema
+  machinery. The citation's `articleId` is the input `Article`'s id, never
+  something the model echoes back; the model supplies only the quote spans. The
+  raw structured output → `NewsItem` mapping is the adapter's internal seam:
+  candidates that fail the citation invariant (§2.3) or any other domain
+  invariant are dropped and counted (`droppedCandidateCount`) here, so only
+  valid `NewsItem`s cross the port. Per-article request failures are isolated;
+  authentication, missing-model, and async-unsupported failures propagate so a
+  broken configuration fails loudly.
 - **`JsonReportStore` / `JsonEvalStore`** — persist reports and eval results
   as JSON snapshots to disk (no DB in v1).
 

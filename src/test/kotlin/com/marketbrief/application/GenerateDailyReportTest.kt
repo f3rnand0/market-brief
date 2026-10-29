@@ -13,13 +13,18 @@ import com.marketbrief.fakes.DeterministicNewsItemExtractor
 import com.marketbrief.fakes.FakeMarketDataFetcher
 import com.marketbrief.fakes.InMemoryReportStore
 import com.marketbrief.fakes.StaticCorpusNewsSource
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withTimeoutOrNull
 import java.time.LocalDate
-import java.util.concurrent.CyclicBarrier
-import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.test.assertSame
+import kotlin.time.Duration.Companion.seconds
 
 class GenerateDailyReportTest {
 
@@ -55,11 +60,13 @@ class GenerateDailyReportTest {
     @Test
     fun `extracts articles concurrently and preserves article order`() = runBlocking {
         val corpus = listOf(article("a1"), article("a2"))
-        val barrier = CyclicBarrier(2)
+        val bothStarted = CompletableDeferred<Unit>()
+        val started = AtomicInteger()
         val extractor = object : NewsItemExtractor {
-            override fun extract(article: Article): List<NewsItem> {
+            override suspend fun extract(article: Article): List<NewsItem> {
                 // Both articles must be in flight at once; a serial implementation times out here.
-                barrier.await(5, TimeUnit.SECONDS)
+                if (started.incrementAndGet() == 2) bothStarted.complete(Unit)
+                withTimeout(5.seconds) { bothStarted.await() }
                 return listOf(item(type = NewsItemType.COMPANY, subject = article.id))
             }
         }
@@ -77,5 +84,45 @@ class GenerateDailyReportTest {
             report.companySectorNews.flatMap { item -> item.subjects }.map { it.name },
             "concurrent extraction must keep the article order",
         )
+    }
+
+    @Test
+    fun `extractionParallelism of one serializes extraction calls`() = runBlocking {
+        val corpus = listOf(article("a1"), article("a2"))
+        val firstEntered = CompletableDeferred<Unit>()
+        val secondEntered = CompletableDeferred<Unit>()
+        val releaseFirst = CompletableDeferred<Unit>()
+        val calls = AtomicInteger()
+
+        val extractor = object : NewsItemExtractor {
+            override suspend fun extract(article: Article): List<NewsItem> {
+                if (calls.incrementAndGet() == 1) {
+                    firstEntered.complete(Unit)
+                    releaseFirst.await()
+                } else {
+                    secondEntered.complete(Unit)
+                }
+                return listOf(item(type = NewsItemType.COMPANY, subject = article.id))
+            }
+        }
+
+        val job = launch {
+            GenerateDailyReport(
+                marketDataFetcher = FakeMarketDataFetcher(),
+                newsSource = StaticCorpusNewsSource(corpus),
+                extractor = extractor,
+                reportStore = InMemoryReportStore(),
+                instruments = instruments,
+                extractionParallelism = 1,
+            ).generate(date)
+        }
+
+        firstEntered.await()
+        assertNull(
+            withTimeoutOrNull(300) { secondEntered.await() },
+            "a second extraction must wait for the only permit",
+        )
+        releaseFirst.complete(Unit)
+        job.join()
     }
 }

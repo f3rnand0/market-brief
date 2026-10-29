@@ -55,6 +55,13 @@ class ApplicationConfigLoaderTest {
     }
 
     @Test
+    fun `blank config path falls back to the default`() {
+        val config = ApplicationConfigLoader.load(mapOf(ApplicationConfigLoader.PATH_ENV to ""))
+
+        assertTrue(config.llm.baseUrl.startsWith("http"))
+    }
+
+    @Test
     fun `reports an unreadable config path`() {
         val path = Path.of("config/does-not-exist.yml")
 
@@ -73,18 +80,37 @@ class ApplicationConfigLoaderTest {
     }
 
     @Test
-    fun `rejects blank values`() {
+    fun `rejects blank values when building the adapter config`() {
+        val config = ApplicationConfigLoader.parse(
+            """
+            llm:
+              baseUrl: " "
+              model: some-model
+              apiKeyEnv: DEEPSEEK_KEY
+            """.trimIndent(),
+        )
+
         val error = assertFailsWith<IllegalArgumentException> {
+            config.toOpenAiCompatibleConfig(mapOf("DEEPSEEK_KEY" to "secret"))
+        }
+
+        assertEquals("baseUrl must not be blank", error.message)
+    }
+
+    @Test
+    fun `rejects a blank api key variable name`() {
+        val error = assertFailsWith<IllegalStateException> {
             ApplicationConfigLoader.parse(
                 """
                 llm:
-                  baseUrl: " "
+                  baseUrl: https://api.example.com/v1
                   model: some-model
+                  apiKeyEnv: " "
                 """.trimIndent(),
             )
         }
 
-        assertEquals("llm.baseUrl must not be blank", error.message)
+        assertTrue(error.message!!.startsWith("Invalid application config"))
     }
 
     @Test

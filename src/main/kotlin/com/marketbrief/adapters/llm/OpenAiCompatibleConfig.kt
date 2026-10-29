@@ -4,8 +4,8 @@ data class OpenAiCompatibleConfig(
     val baseUrl: String,
     val model: String,
     val apiKey: String,
-    val requestTimeoutSeconds: Long = 120,
-    val maxRetries: Int = 2,
+    val requestTimeoutSeconds: Long,
+    val maxRetries: Int,
 ) {
     init {
         require(baseUrl.isNotBlank()) { "baseUrl must not be blank" }

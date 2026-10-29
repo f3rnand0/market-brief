@@ -8,7 +8,6 @@ import com.marketbrief.domain.NewsSource
 import com.marketbrief.domain.Report
 import com.marketbrief.domain.ReportAssembler
 import com.marketbrief.domain.ReportStore
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -31,11 +30,11 @@ class GenerateDailyReport(
     suspend fun generate(date: LocalDate): Report = coroutineScope {
         val snapshot = marketDataFetcher.snapshot(instruments)
         val articles = newsSource.fetch(DayWindow(date))
-        // One failed article must not sink the report, and per-article responses are independent,
-        // so fan out under a fixed permit count: awaitAll preserves article order for the eval loop.
+        // Requests are independent and non-blocking, so fan out under a fixed permit count;
+        // awaitAll preserves article order for the eval loop.
         val permits = Semaphore(extractionParallelism)
         val items = articles
-            .map { article -> async(Dispatchers.IO) { permits.withPermit { extractor.extract(article) } } }
+            .map { article -> async { permits.withPermit { extractor.extract(article) } } }
             .awaitAll()
             .flatten()
         val report = ReportAssembler.assemble(date, snapshot, items)

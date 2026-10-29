@@ -15,4 +15,6 @@ the eval loop, so a gap remains observable rather than being silently rewritten.
 
 Consequence: adapters that omit instruments must record them in `missing`;
 `CompositeMarketDataFetcher` does so. `Snapshot` construction rejects an
-instrument that is both missing and quoted.
+instrument that is both missing and quoted. The `missing` constructor default
+(`emptySet()`) is reserved for callers that know the snapshot is complete; it
+cannot assert completeness on behalf of a producer.

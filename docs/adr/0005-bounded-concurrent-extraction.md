@@ -13,7 +13,10 @@ is unchanged — the same requests are made, just more of them at once.
 The bound exists because providers rate-limit: unbounded fan-out would trade
 latency for `429`s. The permit count is a constructor parameter so the
 composition root can tune it per provider, and LangChain4j retries transient
-failures. A failed article contributes no items and does not fail the report.
+failures. Requests use LangChain4j's asynchronous chat API, so a permit holds a
+pending request rather than a blocked thread. A failed article contributes no
+items and does not fail the report; authentication and missing-model failures
+propagate instead of producing an empty report.
 
 Rejected alternative: keeping extraction serial for cost and stable output. Cost
 is the same either way, and order is preserved by construction, so serial

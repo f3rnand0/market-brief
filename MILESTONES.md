@@ -86,8 +86,9 @@ The LLM seam, behind `NewsItemExtractor`.
 - The live check is an opt-in `liveTest` (tagged `live`, excluded from
   `build`); it asserts only citation structure, never model wording.
 - **Extraction throughput** (prune review Q-3): `GenerateDailyReport` now
-  extracts concurrently under a bounded fan-out (default 4 in flight), and
-  preserves article order before assembly. Decision recorded in ADR-0005.
+  extracts concurrently via the LangChain4j async chat API under a bounded
+  fan-out (default 4 in flight), and preserves article order before assembly.
+  Decision recorded in ADR-0005.
 
 **Done when**: fixture-backed tests cover valid extraction, dropped
 uncited candidates, and drop counts; one manual smoke run against a real
@@ -109,7 +110,7 @@ Expose the pipeline over HTTP and persist reports.
 - Endpoints: `POST /report/generate`, `GET /report/{date}`,
   `GET /report/{date}.html` (kotlinx.html rendering).
 - `testApplication` tests for each endpoint, wired with M2 fakes.
-- **Snapshot completeness policy** (prune review Q-4): resolved in ADR-0005 —
+- **Snapshot completeness policy** (prune review Q-4): resolved in ADR-0006 —
   missing instruments travel in `Snapshot.missing` and render as
   "data unavailable"; `CompositeMarketDataFetcher` and `ReportAssembler` cover
   it with tests.
