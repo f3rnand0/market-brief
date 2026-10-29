@@ -19,10 +19,6 @@ import java.nio.file.Path
 import java.time.Clock
 import java.time.ZoneId
 
-/**
- * The only place that constructs adapters and hands them to the use case
- * (ARCHITECTURE §1). Tests build the same wiring with fakes.
- */
 object CompositionRoot {
 
     fun build(
@@ -42,15 +38,12 @@ object CompositionRoot {
             extractor = LangChain4jNewsItemExtractor.fromConfig(config.toOpenAiCompatibleConfig(env)),
             reportStore = reportStore,
             instruments = ReportInstruments.all,
+            clock = clock,
         )
-        return ReportDependencies(generateDailyReport, reportStore, clock)
+        return ReportDependencies(generateDailyReport, reportStore)
     }
 }
 
-/**
- * Composition-root boundary: only `main` may turn runtime config into an
- * adapter config, so the config package stays adapter-agnostic (ARCHITECTURE §1).
- */
 fun ApplicationConfig.toOpenAiCompatibleConfig(env: Map<String, String> = System.getenv()): OpenAiCompatibleConfig {
     val apiKey = env[llm.apiKeyEnv]?.takeIf { it.isNotBlank() }
         ?: throw IllegalStateException(

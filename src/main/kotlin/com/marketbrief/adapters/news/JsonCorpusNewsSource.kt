@@ -7,10 +7,6 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.time.LocalDate
 
-/**
- * The PoC's curated static corpus (PRD §8). Discovery becomes live in M8; until
- * then this keeps the pipeline deterministic and offline.
- */
 class JsonCorpusNewsSource(private val articles: List<Article>) : NewsSource {
 
     override fun fetch(window: DayWindow): List<Article> = articles

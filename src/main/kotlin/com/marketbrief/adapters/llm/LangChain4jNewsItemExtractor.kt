@@ -24,11 +24,6 @@ import org.slf4j.LoggerFactory
 import java.time.Duration
 import java.util.concurrent.atomic.AtomicLong
 
-/**
- * The LLM seam. Extracted candidates are mapped to domain [NewsItem]s here; a
- * candidate that cannot satisfy the domain invariants (notably a missing
- * citation) is dropped and counted instead of crossing the port.
- */
 class LangChain4jNewsItemExtractor(
     private val chatModel: ChatModel,
     private val json: Json = Json { ignoreUnknownKeys = true },
@@ -41,9 +36,6 @@ class LangChain4jNewsItemExtractor(
         get() = droppedCandidates.get()
 
     override suspend fun extract(article: Article): List<NewsItem> {
-        // Provider and transport failures are systemic: abort the run instead of
-        // saving a report that silently contains no news. Only content-level
-        // failures (empty or malformed output) stay isolated per article.
         val content = try {
             chatModel.chatAsync(request(article)).await().aiMessage().text()
         } catch (e: CancellationException) {

@@ -12,14 +12,8 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
- * Opt-in contract test against the configured provider. Excluded from
- * `./gradlew test`/`build` because it costs tokens, needs a secret, and the
- * model's wording is non-deterministic; run it with
- * `op run --env-file=config/secrets.env -- ./gradlew liveTest`.
- *
- * It asserts only structural guarantees (the citation is present and its
- * quotes occur in the article), never exact extracted text — extraction
- * quality is measured by the eval harness instead.
+ * Asserts citation structure only; exact wording is non-deterministic and is
+ * scored by the eval harness instead.
  */
 @Tag("live")
 class LiveExtractionTest {

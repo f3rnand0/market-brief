@@ -10,10 +10,11 @@ import java.nio.file.Path
 object ApplicationConfigLoader {
 
     const val PATH_ENV = "MARKET_BRIEF_CONFIG"
-    const val DEFAULT_PATH = "config/application.yml"
 
     // The default is relative to the process working directory. Packaged or
     // service launches must set MARKET_BRIEF_CONFIG to an absolute path.
+    const val DEFAULT_PATH = "config/application.yml"
+
     private val yaml = Yaml(configuration = YamlConfiguration(strictMode = false))
 
     fun load(env: Map<String, String> = System.getenv()): ApplicationConfig =

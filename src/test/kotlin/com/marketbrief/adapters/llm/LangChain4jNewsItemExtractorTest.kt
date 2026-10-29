@@ -198,10 +198,6 @@ class LangChain4jNewsItemExtractorTest {
     )
 }
 
-/**
- * Minimal OpenAI-compatible endpoint: returns [content] as the assistant message
- * of every completion and records the raw request bodies.
- */
 private class StubChatServer(content: String, private val status: Int = 200) : AutoCloseable {
 
     val requests = CopyOnWriteArrayList<String>()

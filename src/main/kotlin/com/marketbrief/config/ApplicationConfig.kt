@@ -2,11 +2,6 @@ package com.marketbrief.config
 
 import kotlinx.serialization.Serializable
 
-/**
- * Runtime configuration: everything non-sensitive lives in a YAML file.
- * Secrets are read from the environment, where 1Password's `op run` injects
- * them (see README).
- */
 @Serializable
 data class ApplicationConfig(val llm: LlmConfig, val storage: StorageConfig = StorageConfig()) {
 

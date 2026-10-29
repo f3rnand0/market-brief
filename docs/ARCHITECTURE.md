@@ -63,8 +63,8 @@ objects.
 | domain         | `com.marketbrief.domain`     | nothing (pure Kotlin)     |
 | application    | `com.marketbrief.application`| domain                    |
 | adapters       | `com.marketbrief.adapters`   | domain (+ 3rd-party libs) |
-| wire           | `com.marketbrief.wire`       | domain (shared serializable report shape) |
-| presentation   | `com.marketbrief.http`       | application + wire        |
+| report format  | `com.marketbrief.reportformat` | domain (shared serializable report shape) |
+| presentation   | `com.marketbrief.http`       | application + report format |
 | composition root | `com.marketbrief` (`main`) | application + adapters + http |
 
 ---
@@ -217,7 +217,7 @@ Use cases orchestrate the ports and domain services.
 - **`RunEval`** — runs the gold set against the extractor and produces the
   versioned eval report (see §6).
 
-Both use cases are deliberately deep: one method (`generate(date)`, `run()`)
+Both use cases are deliberately deep: one method (`generate()`, `run()`)
 hides the whole orchestration. Tests cross the same seam as callers — the use
 case is driven with in-memory port fakes, never by reaching past the
 interface.
@@ -275,7 +275,7 @@ Concrete adapters implementing the domain ports.
 ## 5. Presentation layer (`http/`)
 
 Ktor server exposing a small JSON/HTML API. Domain objects are **not**
-serialized directly; `com.marketbrief.wire` owns the `@Serializable` report
+serialized directly; `com.marketbrief.reportformat` owns the `@Serializable` report
 shape, and both the presentation layer and `JsonReportStore` map through it.
 
 The snapshot stays a flat list in the domain. The wire mapper groups quotes by
@@ -293,10 +293,9 @@ instruments travel as `missing` inside their asset-class group and render as
 | POST   | `/eval/run`                | Trigger `RunEval`                |
 | GET    | `/eval/{id}`               | Eval report                      |
 
-`POST /report/generate` accepts an optional `?date=YYYY-MM-DD`; without it the
-report date is the current day and its news window is the previous calendar day.
-An invalid date returns `400`; an absent stored report returns `404` with a JSON
-error.
+`POST /report/generate` uses the current report date and the previous calendar
+day's news window. An invalid retrieval date returns `400`; an absent stored
+report returns `404` with a JSON error.
 
 ---
 

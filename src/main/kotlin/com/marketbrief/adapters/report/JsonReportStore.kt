@@ -2,13 +2,12 @@ package com.marketbrief.adapters.report
 
 import com.marketbrief.domain.Report
 import com.marketbrief.domain.ReportStore
-import com.marketbrief.wire.ReportMapper
+import com.marketbrief.reportformat.ReportMapper
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
 import java.time.LocalDate
 
-/** Persists each report as `<date>.json`; no database in v1 (PRD §3). */
 class JsonReportStore(private val directory: Path) : ReportStore {
 
     override fun save(report: Report) {

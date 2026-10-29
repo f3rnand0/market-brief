@@ -16,8 +16,8 @@ import com.marketbrief.fakes.DeterministicNewsItemExtractor
 import com.marketbrief.fakes.InMemoryReportStore
 import com.marketbrief.fakes.StaticCorpusNewsSource
 import com.marketbrief.module
-import com.marketbrief.wire.ReportDto
-import com.marketbrief.wire.ReportMapper
+import com.marketbrief.reportformat.ReportDto
+import com.marketbrief.reportformat.ReportMapper
 import io.ktor.client.request.get
 import io.ktor.client.request.post
 import io.ktor.client.statement.bodyAsText
@@ -39,6 +39,7 @@ import kotlin.test.assertTrue
 class ReportRoutesTest {
 
     private val date = LocalDate.of(2026, 10, 25)
+    private val generatedDate = LocalDate.of(2026, 10, 26)
     private val clock = Clock.fixed(Instant.parse("2026-10-26T08:00:00Z"), ZoneOffset.UTC)
     private val snapshot = Snapshot(
         quotes = listOf(
@@ -59,25 +60,13 @@ class ReportRoutesTest {
         val store = InMemoryReportStore()
         application { module(dependencies(store)) }
 
-        val response = client.post("/report/generate?date=$date")
-
-        assertEquals(HttpStatusCode.OK, response.status)
-        val dto = ReportMapper.format.decodeFromString<ReportDto>(response.bodyAsText())
-        assertEquals(date.toString(), dto.date)
-        assertEquals("4.995 (+0.9 bp, +0.18%)", fixedIncomeQuote(dto).display)
-        assertNotNull(store.load(date))
-    }
-
-    @Test
-    fun `generate without a date uses the current report date`() = testApplication {
-        val store = InMemoryReportStore()
-        application { module(dependencies(store)) }
-
         val response = client.post("/report/generate")
 
         assertEquals(HttpStatusCode.OK, response.status)
         val dto = ReportMapper.format.decodeFromString<ReportDto>(response.bodyAsText())
-        assertEquals("2026-10-26", dto.date)
+        assertEquals(generatedDate.toString(), dto.date)
+        assertEquals("4.995 (+0.9 bp, +0.18%)", fixedIncomeQuote(dto).display)
+        assertNotNull(store.load(generatedDate))
     }
 
     @Test
@@ -129,7 +118,6 @@ class ReportRoutesTest {
         application { module(dependencies(InMemoryReportStore())) }
 
         assertEquals(HttpStatusCode.BadRequest, client.get("/report/not-a-date").status)
-        assertEquals(HttpStatusCode.BadRequest, client.post("/report/generate?date=tomorrow").status)
     }
 
     private fun dependencies(store: InMemoryReportStore) = ReportDependencies(
@@ -139,9 +127,9 @@ class ReportRoutesTest {
             extractor = DeterministicNewsItemExtractor(mapOf("a1" to items)),
             reportStore = store,
             instruments = ReportInstruments.all,
+            clock = clock,
         ),
         reportStore = store,
-        clock = clock,
     )
 
     private fun report(): Report = ReportAssembler.assemble(date, snapshot, items)

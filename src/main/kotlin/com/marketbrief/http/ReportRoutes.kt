@@ -1,7 +1,7 @@
 package com.marketbrief.http
 
-import com.marketbrief.wire.ErrorDto
-import com.marketbrief.wire.ReportMapper
+import com.marketbrief.reportformat.ErrorDto
+import com.marketbrief.reportformat.ReportMapper
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.ApplicationCall
@@ -10,14 +10,12 @@ import io.ktor.server.response.respondText
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
-import java.time.Clock
 import java.time.LocalDate
 import java.time.format.DateTimeParseException
 
 fun Route.reportRoutes(dependencies: ReportDependencies) {
     post("/report/generate") {
-        val date = call.generateDateOrRespond(dependencies.clock) ?: return@post
-        val report = dependencies.generateDailyReport.generate(date)
+        val report = dependencies.generateDailyReport.generate()
         call.respond(ReportMapper.toDto(report))
     }
 
@@ -40,11 +38,6 @@ fun Route.reportRoutes(dependencies: ReportDependencies) {
             call.respond(ReportMapper.toDto(report))
         }
     }
-}
-
-private suspend fun ApplicationCall.generateDateOrRespond(clock: Clock): LocalDate? {
-    val raw = request.queryParameters["date"] ?: return LocalDate.now(clock)
-    return parseDateOrRespond(raw)
 }
 
 private suspend fun ApplicationCall.pathDateOrRespond(): LocalDate? = parseDateOrRespond(parameters["date"])

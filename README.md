@@ -35,13 +35,14 @@ The PoC wires a static news corpus, the Yahoo/CNBC market-data adapters, and
 the configured LLM extractor. Generate and read a report:
 
 ```bash
-curl -X POST "http://localhost:8080/report/generate?date=2026-10-28"
+curl -X POST http://localhost:8080/report/generate
+# Use the date returned by the generation response:
 curl http://localhost:8080/report/2026-10-28
 curl http://localhost:8080/report/2026-10-28.html
 ```
 
-Without `?date`, `POST /report/generate` uses the current report date; its news
-window is the previous calendar day. Reports are persisted as JSON snapshots;
+`POST /report/generate` uses the current report date; its news window is the
+previous calendar day. Reports are persisted as JSON snapshots;
 `storage.reportsDir` in `config/application.yml` selects the directory (default
 `data/reports`).
 
@@ -52,8 +53,7 @@ Non-sensitive runtime settings for the extractor live in
 `model`, the environment variable holding the API key (`apiKeyEnv`), the request
 timeout, and the retry count. Point `MARKET_BRIEF_CONFIG` at another file to
 override the location; the LLM section selects any OpenAI-compatible provider.
-The `run` server still exposes only `/health`; adapter wiring — and therefore
-startup config validation — lands with M5.
+The `run` server validates startup configuration and serves the report endpoints.
 
 The API key is a secret and never lives in the repository. It is injected from
 1Password at runtime:

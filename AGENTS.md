@@ -53,6 +53,11 @@ step the agent takes.
 
 ## Comments
 
-Comment only what docs and code don't say: the non-obvious decision, the
-gotcha. Restatements of the docs above and narration of readable code go
-stale — delete them.
+Comments must preserve information the code cannot express: a non-obvious
+constraint, rationale, or gotcha. KDoc is justified for a caller-visible
+contract that the signature cannot express, such as failure semantics. Do not
+paraphrase names, narrate implementation steps, or repeat the docs above.
+
+Before finishing, review every comment you added or touched and delete any that
+fail this test. Prefer a clearer name or assertion when code can carry the
+intent.

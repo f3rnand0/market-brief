@@ -1,6 +1,3 @@
-# Non-sensitive runtime configuration. The LLM API key is a secret: it comes
-# from 1Password via `op run` (see README) and is read from the environment
-# variable named by `llm.apiKeyEnv`.
 llm:
   baseUrl: https://api.deepseek.com/v1
   model: deepseek-flash
@@ -8,6 +5,5 @@ llm:
   requestTimeoutSeconds: 120
   maxRetries: 2
 
-# Generated reports are JSON snapshots on disk (PRD §3: no database).
 storage:
   reportsDir: data/reports

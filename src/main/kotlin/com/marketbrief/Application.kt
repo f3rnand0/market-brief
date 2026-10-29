@@ -2,7 +2,7 @@ package com.marketbrief
 
 import com.marketbrief.http.ReportDependencies
 import com.marketbrief.http.reportRoutes
-import com.marketbrief.wire.ReportMapper
+import com.marketbrief.reportformat.ReportMapper
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import io.ktor.serialization.kotlinx.json.json

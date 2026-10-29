@@ -87,7 +87,7 @@ class ReportAssemblerTest {
                 subject = "Nasdaq Composite",
                 assertion = "Nasdaq dropped 2%",
             ),
-            item(type = NewsItemType.COMPANY, subject = "Apple"), // not a move: stays out
+            item(type = NewsItemType.COMPANY, subject = "Apple"),
         )
 
         val summary = ReportAssembler.assemble(date, indexSnapshot(), items).summary

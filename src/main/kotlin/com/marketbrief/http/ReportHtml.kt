@@ -1,8 +1,8 @@
 package com.marketbrief.http
 
-import com.marketbrief.wire.NewsItemDto
-import com.marketbrief.wire.ReportDto
-import com.marketbrief.wire.SnapshotGroupDto
+import com.marketbrief.reportformat.NewsItemDto
+import com.marketbrief.reportformat.ReportDto
+import com.marketbrief.reportformat.SnapshotGroupDto
 import kotlinx.html.FlowContent
 import kotlinx.html.body
 import kotlinx.html.cite
@@ -29,7 +29,6 @@ import kotlinx.html.tr
 import kotlinx.html.ul
 import kotlinx.html.unsafe
 
-/** Renders the wire report as the HTML deliverable (PRD §5). */
 object ReportHtml {
 
     fun render(report: ReportDto): String = createHTML().html {

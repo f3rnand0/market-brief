@@ -20,7 +20,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withTimeoutOrNull
+import java.time.Clock
+import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneOffset
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -32,6 +35,7 @@ import kotlin.time.Duration.Companion.seconds
 class GenerateDailyReportTest {
 
     private val date = LocalDate.of(2026, 10, 25)
+    private val clock = Clock.fixed(Instant.parse("2026-10-25T08:00:00Z"), ZoneOffset.UTC)
     private val instruments = setOf(Instrument("S&P 500", AssetClass.EQUITIES))
 
     @Test
@@ -49,9 +53,10 @@ class GenerateDailyReportTest {
             extractor = DeterministicNewsItemExtractor(extracted),
             reportStore = store,
             instruments = instruments,
+            clock = clock,
         )
 
-        val report = useCase.generate(date)
+        val report = useCase.generate()
 
         assertEquals(date, report.date)
         assertEquals(instruments, report.snapshot.quotes.map { it.instrument }.toSet())
@@ -80,7 +85,8 @@ class GenerateDailyReportTest {
             extractor = extractor,
             reportStore = InMemoryReportStore(),
             instruments = instruments,
-        ).generate(date)
+            clock = clock,
+        ).generate()
 
         assertEquals(
             listOf("a1", "a2"),
@@ -104,7 +110,8 @@ class GenerateDailyReportTest {
                 extractor = extractor,
                 reportStore = store,
                 instruments = instruments,
-            ).generate(date)
+                clock = clock,
+            ).generate()
         }
 
         assertEquals("provider down", error.message)
@@ -127,7 +134,8 @@ class GenerateDailyReportTest {
             extractor = DeterministicNewsItemExtractor(emptyMap()),
             reportStore = InMemoryReportStore(),
             instruments = instruments,
-        ).generate(date)
+            clock = clock,
+        ).generate()
 
         assertEquals(date.minusDays(1), captured.await().date)
     }
@@ -159,8 +167,9 @@ class GenerateDailyReportTest {
                 extractor = extractor,
                 reportStore = InMemoryReportStore(),
                 instruments = instruments,
+                clock = clock,
                 extractionParallelism = 1,
-            ).generate(date)
+            ).generate()
         }
 
         firstEntered.await()

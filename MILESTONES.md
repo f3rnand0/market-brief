@@ -45,7 +45,7 @@ what a port (interface) buys you.
 `GenerateDailyReport` end-to-end, driven entirely by in-memory fakes.
 
 - Implement `GenerateDailyReport` (ARCHITECTURE.md §3): snapshot → fetch →
-  extract → assemble sections → save. One public method: `generate(date)`.
+  extract → assemble sections → save. One public method: `generate()`.
 - Implement **fakes in test code**: `FakeMarketDataFetcher`, `StaticCorpusNewsSource`
   (a few hard-coded articles), `DeterministicNewsItemExtractor` (returns fixed
   items per article id), `InMemoryReportStore`.
@@ -103,8 +103,8 @@ Expose the pipeline over HTTP and persist reports. **Done.**
 
 - `JsonReportStore` (JSON snapshots to disk; round-trip test).
 - HTTP DTOs + mapping (never serialize domain directly, ARCHITECTURE.md §5).
-  The serializable report shape lives in `com.marketbrief.wire` and is shared
-  with the store, so the persisted file and the HTTP response match.
+  The serializable report shape lives in `com.marketbrief.reportformat` and is
+  shared with the store, so the persisted file and the HTTP response match.
 - **Snapshot rendering**: group quotes by asset class in the JSON/HTML layer
   (`Snapshot` stays a flat list; each quote carries `instrument.assetClass`).
   `InstrumentQuote` carries the absolute day change, so fixed income renders
