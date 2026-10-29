@@ -45,15 +45,20 @@ application {
     mainClass.set("com.marketbrief.ApplicationKt")
 }
 
-tasks.register<JavaExec>("smokeExtraction") {
-    group = "verification"
-    description = "Runs one extraction against the configured LLM (manual smoke run)."
-    classpath = sourceSets["main"].runtimeClasspath
-    mainClass.set("com.marketbrief.ExtractionSmokeKt")
+tasks.test {
+    useJUnitPlatform {
+        excludeTags("live")
+    }
 }
 
-tasks.test {
-    useJUnitPlatform()
+tasks.register<Test>("liveTest") {
+    group = "verification"
+    description = "Runs opt-in live tests against the configured LLM provider (needs credentials)."
+    testClassesDirs = sourceSets["test"].output.classesDirs
+    classpath = sourceSets["test"].runtimeClasspath
+    useJUnitPlatform {
+        includeTags("live")
+    }
 }
 
 ktlint {

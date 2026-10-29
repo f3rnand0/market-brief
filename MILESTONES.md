@@ -83,6 +83,8 @@ The LLM seam, behind `NewsItemExtractor`.
   the port.
 - Test with a stubbed HTTP server returning canned structured output — no
   live LLM in unit tests.
+- The live check is an opt-in `liveTest` (tagged `live`, excluded from
+  `build`); it asserts only citation structure, never model wording.
 - **Extraction throughput** (prune review Q-3): `GenerateDailyReport` now
   extracts concurrently under a bounded fan-out (default 4 in flight), and
   preserves article order before assembly. Decision recorded in ADR-0005.

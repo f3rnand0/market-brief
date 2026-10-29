@@ -58,16 +58,23 @@ op run --env-file=config/secrets.env -- ./gradlew run
 not the secret itself, and is gitignored. Any other injection mechanism works
 too — the app reads whatever variable `llm.apiKeyEnv` names.
 
-Manual smoke run of the extractor against the configured provider:
+Manual verification against the configured provider (opt-in live test):
 
 ```bash
-op run --env-file=config/secrets.env -- ./gradlew smokeExtraction
+op run --env-file=config/secrets.env -- ./gradlew liveTest
 ```
 
 ## Test
 
 ```bash
 ./gradlew test
+```
+
+Live tests (tagged `live`) call the configured LLM provider, so they are
+excluded from `test` and `build`. Run them explicitly with credentials:
+
+```bash
+op run --env-file=config/secrets.env -- ./gradlew liveTest
 ```
 
 ## Lint
