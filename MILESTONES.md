@@ -123,14 +123,16 @@ adapters wired in `main`).
 **Learn**: Ktor content negotiation, kotlinx.html DSL, DTO mapping, the
 composition root doing real wiring.
 
-## M6 — Scheduling
+## M6 — Scheduling ✅
 
 - Scheduler triggers `GenerateDailyReport` daily at 09:00 Europe/Berlin,
   CET/CEST aware (wired in the composition root, not the use case).
 - Keep the on-demand `POST /report/generate` for the PoC.
 
 **Done when**: a test (injectable clock) proves the trigger fires at 09:00
-Berlin across a DST boundary.
+Berlin across a DST boundary. **Done** — `DailyReportScheduler` has virtual-time
+tests across both the spring and autumn transitions; a failed run is logged and
+does not stop the schedule.
 **Learn**: scheduled jobs, injecting a `Clock` for testability, timezone
 handling.
 

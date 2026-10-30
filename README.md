@@ -42,7 +42,9 @@ curl http://localhost:8080/report/2026-10-28.html
 ```
 
 `POST /report/generate` uses the current report date; its news window is the
-previous calendar day. Reports are persisted as JSON snapshots;
+previous calendar day. The server also runs the pipeline automatically every
+day at 09:00 Europe/Berlin (CET/CEST aware); the endpoint stays available for
+on-demand runs. Reports are persisted as JSON snapshots;
 `storage.reportsDir` in `config/application.yml` selects the directory (default
 `data/reports`).
 

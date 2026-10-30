@@ -13,9 +13,11 @@ import com.marketbrief.config.ApplicationConfigLoader
 import com.marketbrief.domain.AssetClass
 import com.marketbrief.domain.ReportInstruments
 import com.marketbrief.http.ReportDependencies
+import com.marketbrief.scheduling.DailyReportScheduler
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import java.nio.file.Path
+import java.time.Clock
 
 object CompositionRoot {
 
@@ -38,6 +40,14 @@ object CompositionRoot {
         )
         return ReportDependencies(generateDailyReport, reportStore)
     }
+
+    fun scheduler(generateDailyReport: GenerateDailyReport, clock: Clock = Clock.systemUTC()): DailyReportScheduler =
+        DailyReportScheduler(
+            clock = clock,
+            zone = DailyReportScheduler.REPORT_ZONE,
+            triggerTime = DailyReportScheduler.REPORT_TIME,
+            action = generateDailyReport::generate,
+        )
 }
 
 fun ApplicationConfig.toOpenAiCompatibleConfig(env: Map<String, String> = System.getenv()): OpenAiCompatibleConfig {

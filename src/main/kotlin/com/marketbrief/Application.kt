@@ -14,15 +14,25 @@ import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 
 fun main() {
     val port = resolvePort(System.getenv("PORT"))
     val httpClient = HttpClient(CIO)
+    val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     try {
         val dependencies = CompositionRoot.build(httpClient = httpClient)
+        applicationScope.launch {
+            CompositionRoot.scheduler(dependencies.generateDailyReport).run()
+        }
         embeddedServer(Netty, port = port, host = "0.0.0.0") { module(dependencies) }
             .start(wait = true)
     } finally {
+        applicationScope.cancel()
         httpClient.close()
     }
 }

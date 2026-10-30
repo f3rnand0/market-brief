@@ -65,6 +65,7 @@ objects.
 | adapters       | `com.marketbrief.adapters`   | domain (+ 3rd-party libs) |
 | report format  | `com.marketbrief.reportformat` | domain (shared serializable report shape) |
 | presentation   | `com.marketbrief.http`       | application + report format |
+| scheduling     | `com.marketbrief.scheduling` | Kotlin coroutines + `java.time` (no domain/app imports) |
 | composition root | `com.marketbrief` (`main`) | application + adapters + http |
 
 ---
@@ -230,7 +231,11 @@ disconnected client cannot cancel work shared by another caller.
 
 A scheduler (wired in the composition root, not part of the use case) triggers
 `GenerateDailyReport` at 09:00 Europe/Berlin (CET/CEST aware); the PoC also
-exposes an on-demand trigger.
+exposes an on-demand trigger. `DailyReportScheduler` owns no business logic: it
+takes the current instant from an injected `Clock`, sleeps until the next 09:00
+in the Berlin zone, runs the supplied action, and repeats. A failed run is
+logged and the schedule continues, so one provider outage does not silence the
+next day's report.
 
 ---
 
