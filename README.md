@@ -99,3 +99,17 @@ build. To check or fix without a full build:
 ```
 
 Style is configured in [`.editorconfig`](.editorconfig).
+
+## Quality checks
+
+The Kotlin compiler treats warnings as errors. This catches compiler-level
+issues, including unsafe or deprecated code, while Ktlint enforces formatting.
+Run the complete local quality gate with:
+
+```bash
+./gradlew check
+```
+
+Every push to `main` runs `./gradlew build` in GitHub Actions. The normal
+quality workflow does not call external LLM services. The credentialed live
+test is local-only and requires the configured credentials described above.

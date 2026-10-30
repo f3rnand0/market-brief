@@ -43,6 +43,9 @@ dependencies {
 
 kotlin {
     jvmToolchain(25)
+    compilerOptions {
+        allWarningsAsErrors.set(true)
+    }
 }
 
 application {
