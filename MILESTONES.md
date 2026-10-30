@@ -138,6 +138,8 @@ handling.
 
 ## M7 — Eval harness
 
+**Done.**
+
 Measure extraction quality (PRD §11, ARCHITECTURE.md §6).
 
 - Gold set format: `gold/<id>.json` with expected `NewsItem`s; seed it with

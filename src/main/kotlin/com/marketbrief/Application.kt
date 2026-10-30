@@ -1,6 +1,7 @@
 package com.marketbrief
 
 import com.marketbrief.http.ReportDependencies
+import com.marketbrief.http.evalRoutes
 import com.marketbrief.http.reportRoutes
 import com.marketbrief.reportformat.ReportMapper
 import io.ktor.client.HttpClient
@@ -55,5 +56,6 @@ fun Application.module(dependencies: ReportDependencies) {
             call.respondText("ok")
         }
         reportRoutes(dependencies)
+        evalRoutes(dependencies)
     }
 }

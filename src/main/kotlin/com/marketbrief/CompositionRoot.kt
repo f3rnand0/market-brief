@@ -6,8 +6,11 @@ import com.marketbrief.adapters.marketdata.CnbcQuoteFetcher
 import com.marketbrief.adapters.marketdata.CompositeMarketDataFetcher
 import com.marketbrief.adapters.marketdata.YahooQuoteFetcher
 import com.marketbrief.adapters.news.JsonCorpusNewsSource
+import com.marketbrief.adapters.news.JsonGoldSet
+import com.marketbrief.adapters.report.JsonEvalStore
 import com.marketbrief.adapters.report.JsonReportStore
 import com.marketbrief.application.GenerateDailyReport
+import com.marketbrief.application.RunEval
 import com.marketbrief.config.ApplicationConfig
 import com.marketbrief.config.ApplicationConfigLoader
 import com.marketbrief.domain.AssetClass
@@ -31,14 +34,22 @@ object CompositionRoot {
             fallbacks = mapOf(AssetClass.FIXED_INCOME to listOf(CnbcQuoteFetcher(httpClient))),
         )
         val reportStore = JsonReportStore(Path.of(config.storage.reportsDir))
+        val evalStore = JsonEvalStore(Path.of(config.storage.evalsDir))
+        val newsSource = JsonCorpusNewsSource.fromResource()
+        val extractor = LangChain4jNewsItemExtractor.fromConfig(config.toOpenAiCompatibleConfig(env))
         val generateDailyReport = GenerateDailyReport(
             marketDataFetcher = marketDataFetcher,
-            newsSource = JsonCorpusNewsSource.fromResource(),
-            extractor = LangChain4jNewsItemExtractor.fromConfig(config.toOpenAiCompatibleConfig(env)),
+            newsSource = newsSource,
+            extractor = extractor,
             reportStore = reportStore,
             instruments = ReportInstruments.all,
         )
-        return ReportDependencies(generateDailyReport, reportStore)
+        return ReportDependencies(
+            generateDailyReport,
+            reportStore,
+            RunEval(newsSource, extractor, evalStore, JsonGoldSet.fromResource()),
+            evalStore,
+        )
     }
 
     fun scheduler(generateDailyReport: GenerateDailyReport, clock: Clock = Clock.systemUTC()): DailyReportScheduler =
