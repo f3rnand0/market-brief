@@ -1,0 +1,1 @@
+{"items":[{"type":"MARKET_MOVE","region":"US","subjects":["S&P 500"],"assertion":"The S&P 500 dropped 0.8%.","direction":"DOWN","metrics":[{"value":"0.8","unit":"%"}],"quotes":["The S&P 500 dropped 0.8%"]}]}
