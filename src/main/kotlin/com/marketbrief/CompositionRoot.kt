@@ -16,15 +16,12 @@ import com.marketbrief.http.ReportDependencies
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import java.nio.file.Path
-import java.time.Clock
-import java.time.ZoneId
 
 object CompositionRoot {
 
     fun build(
         config: ApplicationConfig = ApplicationConfigLoader.load(),
         env: Map<String, String> = System.getenv(),
-        clock: Clock = Clock.system(ZoneId.of("Europe/Berlin")),
         httpClient: HttpClient = HttpClient(CIO),
     ): ReportDependencies {
         val marketDataFetcher = CompositeMarketDataFetcher(
@@ -38,7 +35,6 @@ object CompositionRoot {
             extractor = LangChain4jNewsItemExtractor.fromConfig(config.toOpenAiCompatibleConfig(env)),
             reportStore = reportStore,
             instruments = ReportInstruments.all,
-            clock = clock,
         )
         return ReportDependencies(generateDailyReport, reportStore)
     }

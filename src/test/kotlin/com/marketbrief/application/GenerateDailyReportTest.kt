@@ -4,11 +4,13 @@ import com.marketbrief.domain.Article
 import com.marketbrief.domain.AssetClass
 import com.marketbrief.domain.DayWindow
 import com.marketbrief.domain.Instrument
+import com.marketbrief.domain.MarketDataFetcher
 import com.marketbrief.domain.NewsItem
 import com.marketbrief.domain.NewsItemExtractor
 import com.marketbrief.domain.NewsItemType
 import com.marketbrief.domain.NewsSource
 import com.marketbrief.domain.Region
+import com.marketbrief.domain.Snapshot
 import com.marketbrief.domain.article
 import com.marketbrief.domain.item
 import com.marketbrief.fakes.DeterministicNewsItemExtractor
@@ -16,6 +18,8 @@ import com.marketbrief.fakes.FakeMarketDataFetcher
 import com.marketbrief.fakes.InMemoryReportStore
 import com.marketbrief.fakes.StaticCorpusNewsSource
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -63,6 +67,37 @@ class GenerateDailyReportTest {
         assertEquals(listOf("PBOC"), report.regionalNews[Region.CHINA]!!.flatMap { it.subjects }.map { it.name })
         assertEquals(listOf("Apple"), report.companySectorNews.flatMap { it.subjects }.map { it.name })
         assertSame(report, store.load(date), "generated report must be persisted")
+    }
+
+    @Test
+    fun `concurrent generation for the same date shares one run`() = runBlocking {
+        val started = CompletableDeferred<Unit>()
+        val release = CompletableDeferred<Unit>()
+        val calls = AtomicInteger()
+        val fetcher = object : MarketDataFetcher {
+            override suspend fun snapshot(instruments: Set<Instrument>): Snapshot {
+                calls.incrementAndGet()
+                started.complete(Unit)
+                release.await()
+                return Snapshot(emptyList())
+            }
+        }
+        val useCase = GenerateDailyReport(
+            marketDataFetcher = fetcher,
+            newsSource = StaticCorpusNewsSource(emptyList()),
+            extractor = DeterministicNewsItemExtractor(emptyMap()),
+            reportStore = InMemoryReportStore(),
+            instruments = instruments,
+            clock = clock,
+        )
+
+        val first = async { useCase.generate() }
+        started.await()
+        val second = async(start = CoroutineStart.UNDISPATCHED) { useCase.generate() }
+        release.complete(Unit)
+
+        assertSame(first.await(), second.await())
+        assertEquals(1, calls.get(), "concurrent calls for one date must share a single generation")
     }
 
     @Test

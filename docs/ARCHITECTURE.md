@@ -224,7 +224,9 @@ interface.
 
 `GenerateDailyReport.generate` is `suspend`: the `MarketDataFetcher` and
 `NewsItemExtractor` ports are suspending, and the HTTP layer calls the use case
-from its request coroutine.
+from its request coroutine. Concurrent calls for the same report date share one
+in-flight run; the run is detached from the requesting coroutine, so a
+disconnected client cannot cancel work shared by another caller.
 
 A scheduler (wired in the composition root, not part of the use case) triggers
 `GenerateDailyReport` at 09:00 Europe/Berlin (CET/CEST aware); the PoC also

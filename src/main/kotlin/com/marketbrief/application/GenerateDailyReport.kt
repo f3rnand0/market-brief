@@ -8,6 +8,11 @@ import com.marketbrief.domain.NewsSource
 import com.marketbrief.domain.Report
 import com.marketbrief.domain.ReportAssembler
 import com.marketbrief.domain.ReportStore
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -16,6 +21,7 @@ import kotlinx.coroutines.sync.withPermit
 import java.time.Clock
 import java.time.LocalDate
 import java.time.ZoneId
+import java.util.concurrent.ConcurrentHashMap
 
 class GenerateDailyReport(
     private val marketDataFetcher: MarketDataFetcher,
@@ -26,12 +32,25 @@ class GenerateDailyReport(
     private val extractionParallelism: Int = DEFAULT_EXTRACTION_PARALLELISM,
     private val clock: Clock = Clock.system(REPORT_ZONE),
 ) {
+    // Detached so one client disconnect cannot cancel a run shared by other callers.
+    private val generationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val inFlight = ConcurrentHashMap<LocalDate, Deferred<Report>>()
+
     init {
         require(extractionParallelism > 0) { "extractionParallelism must be positive" }
     }
 
-    suspend fun generate(): Report = coroutineScope {
+    suspend fun generate(): Report {
         val date = LocalDate.now(clock)
+        val generation = inFlight.computeIfAbsent(date) {
+            generationScope.async(start = CoroutineStart.LAZY) { generateReport(date) }
+        }
+        generation.invokeOnCompletion { inFlight.remove(date, generation) }
+        generation.start()
+        return generation.await()
+    }
+
+    private suspend fun generateReport(date: LocalDate): Report = coroutineScope {
         val snapshot = marketDataFetcher.snapshot(instruments)
         val articles = newsSource.fetch(DayWindow.forReportDate(date))
         val permits = Semaphore(extractionParallelism)

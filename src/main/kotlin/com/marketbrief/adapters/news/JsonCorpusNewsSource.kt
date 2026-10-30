@@ -12,18 +12,16 @@ class JsonCorpusNewsSource(private val articles: List<Article>) : NewsSource {
     override fun fetch(window: DayWindow): List<Article> = articles
 
     companion object {
-        const val DEFAULT_RESOURCE = "/corpus/articles.json"
+        private const val DEFAULT_RESOURCE = "/corpus/articles.json"
 
         private val json = Json { ignoreUnknownKeys = true }
 
-        fun fromResource(
-            resource: String = DEFAULT_RESOURCE,
-            loader: ClassLoader = JsonCorpusNewsSource::class.java.classLoader,
-        ): JsonCorpusNewsSource {
-            val text = loader.getResourceAsStream(resource.removePrefix("/"))
+        fun fromResource(): JsonCorpusNewsSource {
+            val text = JsonCorpusNewsSource::class.java.classLoader
+                .getResourceAsStream(DEFAULT_RESOURCE.removePrefix("/"))
                 ?.bufferedReader()
                 ?.use { it.readText() }
-                ?: error("Corpus resource not found: $resource")
+                ?: error("Corpus resource not found: $DEFAULT_RESOURCE")
             return JsonCorpusNewsSource(
                 json.decodeFromString<List<CorpusArticle>>(text).map { article ->
                     Article(

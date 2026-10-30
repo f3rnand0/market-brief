@@ -36,7 +36,7 @@ internal fun resolvePort(raw: String?): Int {
     return port
 }
 
-fun Application.module(dependencies: ReportDependencies? = null) {
+fun Application.module(dependencies: ReportDependencies) {
     install(ContentNegotiation) {
         json(ReportMapper.format)
     }
@@ -44,8 +44,6 @@ fun Application.module(dependencies: ReportDependencies? = null) {
         get("/health") {
             call.respondText("ok")
         }
-        if (dependencies != null) {
-            reportRoutes(dependencies)
-        }
+        reportRoutes(dependencies)
     }
 }
