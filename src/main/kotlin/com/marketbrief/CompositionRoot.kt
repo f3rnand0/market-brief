@@ -5,7 +5,9 @@ import com.marketbrief.adapters.llm.OpenAiCompatibleConfig
 import com.marketbrief.adapters.marketdata.CnbcQuoteFetcher
 import com.marketbrief.adapters.marketdata.CompositeMarketDataFetcher
 import com.marketbrief.adapters.marketdata.YahooQuoteFetcher
-import com.marketbrief.adapters.news.JsonCorpusNewsSource
+import com.marketbrief.adapters.news.CompositeNewsSource
+import com.marketbrief.adapters.news.GdeltNewsSource
+import com.marketbrief.adapters.news.RssNewsSource
 import com.marketbrief.adapters.news.JsonGoldSet
 import com.marketbrief.adapters.report.JsonEvalStore
 import com.marketbrief.adapters.report.JsonReportStore
@@ -35,7 +37,7 @@ object CompositionRoot {
         )
         val reportStore = JsonReportStore(Path.of(config.storage.reportsDir))
         val evalStore = JsonEvalStore(Path.of(config.storage.evalsDir))
-        val newsSource = JsonCorpusNewsSource.fromResource()
+        val newsSource = CompositeNewsSource(listOf(RssNewsSource(httpClient), GdeltNewsSource(httpClient)))
         val extractor = LangChain4jNewsItemExtractor.fromConfig(config.toOpenAiCompatibleConfig(env))
         val generateDailyReport = GenerateDailyReport(
             marketDataFetcher = marketDataFetcher,

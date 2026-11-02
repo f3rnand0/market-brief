@@ -156,7 +156,7 @@ caught by the independent verification.
 **Learn**: precision/recall metrics, eval design, "don't mark your own
 homework" verification.
 
-## M8 — Live news ingestion
+## M8 — Live news ingestion ✅
 
 Replace the static corpus with real free sources.
 
