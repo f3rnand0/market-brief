@@ -136,7 +136,7 @@ does not stop the schedule.
 **Learn**: scheduled jobs, injecting a `Clock` for testability, timezone
 handling.
 
-## M7 — Eval harness
+## M7 — Eval harness ✅
 
 **Done.**
 
