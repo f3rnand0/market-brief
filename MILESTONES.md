@@ -138,8 +138,6 @@ handling.
 
 ## M7 — Eval harness ✅
 
-**Done.**
-
 Measure extraction quality (PRD §11, ARCHITECTURE.md §6).
 
 - Gold set format: `gold/<id>.json` with expected `NewsItem`s; seed it with
@@ -156,7 +154,7 @@ caught by the independent verification.
 **Learn**: precision/recall metrics, eval design, "don't mark your own
 homework" verification.
 
-## M8 — Live news ingestion
+## M8 — Live news ingestion ✅
 
 Replace the static corpus with real free sources.
 

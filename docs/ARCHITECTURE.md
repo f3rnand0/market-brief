@@ -150,7 +150,10 @@ renders as "No major index moves." GLOBAL `MACRO` and `MARKET_MOVE` items are
 carried as `Report.otherNews` (the summary's "other important news") rather
 than dropped. A `COMPANY` or `SECTOR` item appears only in the company/sector
 section; it is never duplicated into the regional sections. Regional ranking,
-capping, and dedupe are scheduled in M8.
+capping, and dedupe use descending publication date, a three-article-per-outlet
+cap, and a ten-item-per-region cap. Duplicate event keys are removed before
+capping. `GLOBAL` items are excluded from regional sections and remain in
+`otherNews`.
 
 ### 2.5 Ports (interfaces owned by the domain)
 
