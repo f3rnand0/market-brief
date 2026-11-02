@@ -136,10 +136,7 @@ does not stop the schedule.
 **Learn**: scheduled jobs, injecting a `Clock` for testability, timezone
 handling.
 
-## M7 — Eval harness
-
-**Done.**
-
+## M7 — Eval harness ✅
 Measure extraction quality (PRD §11, ARCHITECTURE.md §6).
 
 - Gold set format: `gold/<id>.json` with expected `NewsItem`s; seed it with
