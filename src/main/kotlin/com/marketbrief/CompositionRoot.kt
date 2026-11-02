@@ -7,8 +7,8 @@ import com.marketbrief.adapters.marketdata.CompositeMarketDataFetcher
 import com.marketbrief.adapters.marketdata.YahooQuoteFetcher
 import com.marketbrief.adapters.news.CompositeNewsSource
 import com.marketbrief.adapters.news.GdeltNewsSource
-import com.marketbrief.adapters.news.RssNewsSource
 import com.marketbrief.adapters.news.JsonGoldSet
+import com.marketbrief.adapters.news.RssNewsSource
 import com.marketbrief.adapters.report.JsonEvalStore
 import com.marketbrief.adapters.report.JsonReportStore
 import com.marketbrief.application.GenerateDailyReport

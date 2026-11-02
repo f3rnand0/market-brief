@@ -36,7 +36,7 @@ the configured LLM extractor. Generate and read a report:
 
 ```bash
 curl -X POST http://localhost:8080/report/generate
-# Use the date returned by the generation response:
+# The response contains the report date. Substitute it in either URL:
 curl http://localhost:8080/report/2026-10-28
 curl http://localhost:8080/report/2026-10-28.html
 ```
@@ -46,7 +46,16 @@ previous calendar day. The server also runs the pipeline automatically every
 day at 09:00 Europe/Berlin (CET/CEST aware); the endpoint stays available for
 on-demand runs. Reports are persisted as JSON snapshots;
 `storage.reportsDir` in `config/application.yml` selects the directory (default
-`data/reports`).
+`data/reports`). The generated JSON file is named `<date>.json` (for example,
+`data/reports/2026-10-28.json`). The HTML report is rendered from that saved
+report when the `.html` endpoint is requested; it is returned in the HTTP
+response and is not stored as a separate HTML file. Open the HTML URL in a
+browser to view the formatted report, or save it locally:
+
+```bash
+curl http://localhost:8080/report/2026-10-28.html \
+  --output 2026-10-28.html
+```
 
 ## Configuration
 

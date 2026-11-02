@@ -14,10 +14,7 @@ import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import javax.xml.parsers.DocumentBuilderFactory
 
-class RssNewsSource(
-    private val client: HttpClient,
-    private val feedUrls: List<String> = DEFAULT_FEEDS,
-) : NewsSource {
+class RssNewsSource(private val client: HttpClient, private val feedUrls: List<String> = DEFAULT_FEEDS) : NewsSource {
     override fun fetch(window: DayWindow): List<Article> = runBlocking {
         feedUrls.flatMap { url ->
             runCatching { RssParser.parse(client.get(url).bodyAsText()) }.getOrElse { emptyList() }
@@ -35,7 +32,8 @@ class RssNewsSource(
 
 class GdeltNewsSource(
     private val client: HttpClient,
-    private val endpoint: String = "https://api.gdeltproject.org/api/v2/doc/doc?query=markets&mode=artlist&format=rss&maxrecords=250",
+    private val endpoint: String =
+        "https://api.gdeltproject.org/api/v2/doc/doc?query=markets&mode=artlist&format=rss&maxrecords=250",
 ) : NewsSource {
     override fun fetch(window: DayWindow): List<Article> = runBlocking {
         runCatching {
@@ -69,6 +67,7 @@ private object RssParser {
                         children.item(i).takeIf { it.nodeName.equals(name, true) }?.textContent?.trim()
                     }.orEmpty()
                 }
+
                 val url = field("link").ifBlank { field("guid") }
                 val headline = field("title")
                 val date = parseDate(field("pubDate").ifBlank { field("published") }) ?: return@mapNotNull null
