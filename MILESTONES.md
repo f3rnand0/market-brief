@@ -7,8 +7,10 @@ parallel any time after M4.
 
 Ground rules for every milestone:
 
-- Respect the dependency direction (ARCHITECTURE.md §1): domain ← application ←
-  http; adapters ← domain; only `main` sees both application and adapters.
+- Respect the dependency direction (ARCHITECTURE.md §1): application depends on
+  domain; adapters depend on domain and the shared report format; HTTP depends on
+  application and report format. The composition root wires application and
+  adapters.
 - Domain stays pure Kotlin — no framework/serialization imports.
 - Every milestone ends with passing tests (`./gradlew test`).
 
@@ -136,44 +138,43 @@ does not stop the schedule.
 **Learn**: scheduled jobs, injecting a `Clock` for testability, timezone
 handling.
 
-## M7 — Eval harness ✅
+## M7 — Eval harness (in progress)
 
 Measure extraction quality (PRD §11, ARCHITECTURE.md §6).
 
-- Gold set format: `gold/<id>.json` with expected `NewsItem`s; seed it with
-  ~5–10 labeled articles (grow later).
-- `RunEval` use case: accuracy (field-level precision/recall), unsupported
-  claims, missing values, cost. `RunEval` re-verifies each `source` span
-  against the article text itself — never trust the adapter's drop counts.
-- `JsonEvalStore` + versioned eval report (JSON + Markdown).
-- Endpoints: `POST /eval/run`, `GET /eval/{id}`.
+- **Implemented**: eight gold files with expected `NewsItem`s; `RunEval`,
+  `JsonEvalStore`, and `POST /eval/run` / `GET /eval/{id}` are wired.
+- **Remaining**: add eval tests; include expected snapshot facts; validate metric
+  calculations; measure cost instead of returning `0.0`; strengthen citation
+  evaluation beyond checking quote presence; add an `EvalStore` test fake; run
+  the gold cases against their packaged corpus articles. The production
+  RSS/GDELT article IDs do not match the gold IDs, so the current eval endpoint
+  can score an empty set and report perfect ratios.
 
-**Done when**: `RunEval` on the deterministic fake produces a known-metrics
-report (expected values asserted in tests); a planted wrong `source` span is
-caught by the independent verification.
+**Done when**: tests prove known metrics for deterministic extraction, a planted
+quote absent from the article fails verification, and the documented eval
+metrics are implemented rather than placeholders.
 **Learn**: precision/recall metrics, eval design, "don't mark your own
 homework" verification.
 
-## M8 — Live news ingestion ✅
+## M8 — Live news ingestion (in progress)
 
-Replace the static corpus with real free sources.
+Use free live sources in production and select regional items by the defined
+policy.
 
-- `RssNewsSource` (Google News RSS + curated outlet list) and
-  `GdeltNewsSource` behind the `NewsSource` port; dedupe across sources.
-- **Regional section selection** (code-review item 8): rank each region by
-  article publication date via `Source.articleId`, cap the section, cap per
-  outlet, and dedupe by event key. Document the policy in ARCHITECTURE §2.4
-  and PRD §5.1. Add a 50-item corpus test for per-region cap, stable order,
-  dedupe, and `GLOBAL` exclusion.
-- Fixture-backed parsing tests (recorded RSS/XML); a manual smoke run
-  against the live feeds.
+- **Implemented**: `RssNewsSource` and `GdeltNewsSource` are wired through
+  `CompositeNewsSource`, which deduplicates URLs and sorts by publication date.
+- **Remaining**: fixture-backed feed tests and live smoke run; regional ranking
+  by publication date, per-outlet and per-region caps, event-key deduplication,
+  and a corpus test for stable selection and `GLOBAL` exclusion. Feed failures
+  currently become empty results and need an explicit operational policy.
 
-**Done when**: `./gradlew run` generates a report from live news; fixture
-tests pass offline.
+**Done when**: feed fixtures and live smoke verification pass, and report
+selection applies the documented regional policy with tests.
 **Learn**: RSS/XML parsing, HTTP resilience (timeouts, retries), multi-source
 dedup.
 
-## M9 — LangChain4j spike (parallel, time-boxed)
+## M9 — LangChain4j spike (planned, parallel, time-boxed)
 
 PRD §12: probe structured output with the `NewsItem` shape across providers
 (DeepSeek / Kimi / open models). Exit criteria: minimal reproducer +
@@ -188,5 +189,7 @@ objects), provider divergence.
 ---
 
 ## Release mapping (PRD §13)
+
+These are release targets, not completion status; M7 and M8 remain in progress.
 
 - PoC = M0–M5 · Eval = M7 · Live = M6 + M8 · Spike = M9

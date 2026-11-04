@@ -5,7 +5,8 @@ important global investment-market news** for the previous day. It gathers free
 news and market data, extracts the meaningful information into typed units
 (`NewsItem`s), and assembles a templated report (JSON + HTML).
 
-This document describes the intended architecture. It follows a
+This document is the source of truth for the implemented architecture, including
+its rationale and current limitations. It follows a
 **Domain-Driven Design (DDD)** style with single-direction dependencies between
 layers. It is the code-level counterpart to [`PRD.md`](PRD.md) (the *what*) and
 [`GLOSSARY.md`](GLOSSARY.md) (the *vocabulary*).
@@ -41,9 +42,9 @@ or LLM providers.
 
 ┌──────────────────────────────────────────────────────────────┐
 │                     composition root                          │
-│  `main`: constructs adapters, injects them into use cases,    │
-│  starts scheduler + Ktor. The ONLY module that imports both   │
-│  application and adapters.                                    │
+│  `CompositionRoot`: constructs and wires dependencies; `main` │
+│  starts the scheduler + Ktor. The ONLY wiring object that     │
+│  imports both application and adapters.                       │
 └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -61,12 +62,13 @@ objects.
 | Layer          | Package                      | Depends on                |
 |----------------|------------------------------|---------------------------|
 | domain         | `com.marketbrief.domain`     | nothing (pure Kotlin)     |
-| application    | `com.marketbrief.application`| domain                    |
-| adapters       | `com.marketbrief.adapters`   | domain (+ 3rd-party libs) |
-| report format  | `com.marketbrief.reportformat` | domain (shared serializable report shape) |
-| presentation   | `com.marketbrief.http`       | application + report format |
-| scheduling     | `com.marketbrief.scheduling` | Kotlin coroutines + `java.time` (no domain/app imports) |
-| composition root | `com.marketbrief` (`main`) | application + adapters + http |
+| application | `com.marketbrief.application` | domain + coroutines |
+| adapters | `com.marketbrief.adapters` | domain + report format + third-party libraries |
+| report format | `com.marketbrief.reportformat` | domain (shared serializable report shape) |
+| presentation | `com.marketbrief.http` | application + report format |
+| scheduling | `com.marketbrief.scheduling` | coroutines + `java.time` + SLF4J (no domain/app imports) |
+| configuration | `com.marketbrief.config` | kaml + kotlinx.serialization |
+| composition root | `com.marketbrief` | application + adapters + domain + http + scheduling + configuration + Ktor client |
 
 ---
 
@@ -89,8 +91,10 @@ article:
 - `cause` — optional free text on `MARKET_MOVE` items; must itself be
   source-backed
 - `metrics` — extracted numbers with units (e.g. "−1.2%", "$42B")
-- `source` — the article id + quote span(s) that support the assertion
-  (**mandatory**; see ADR-0002)
+- `source` — one article id plus one or more quote spans intended to support the
+  item (**mandatory**; see ADR-0002). Construction checks that the citation and
+  its quote spans are non-empty; it does not verify the quotes against article
+  text.
 
 **`Snapshot`** is the structured market-numbers data: a flat list of
 `InstrumentQuote`s, each tagged with an `Instrument` and its asset class
@@ -124,10 +128,10 @@ Kept strictly separate:
 
 ### 2.3 The citation invariant (parse, don't validate)
 
-ADR-0002's core rule — an assertion without a backing `source` is an
-*extraction failure*, not a valid output — is enforced **at construction**:
-`NewsItem` cannot be created without a `source`. There is no separate
-"validate after the fact" step callers must remember.
+ADR-0002's core rule — an assertion without a `source` is an *extraction
+failure*, not a valid output — is enforced **at construction**: `NewsItem`
+cannot be created without a `source`. Construction checks citation shape, not
+whether its quote spans occur in the article or support the assertion.
 
 The mapping from raw LLM structured output to `NewsItem` — where invalid
 candidates are dropped and recorded — is an **internal seam of the extractor
@@ -138,8 +142,8 @@ invariant holds for every current and future caller (pipeline, eval, tests).
 
 ### 2.4 Section assembly rules
 
-Section assembly defines how validated `NewsItem`s map to the four
-report sections: regional grouping (US / China / Europe / Latam / Asia), the
+Section assembly maps `NewsItem`s to the four report sections: regional grouping
+(US / China / Europe / Latam / Asia), the
 company/sector balance (US / China / Global, never US-only), and the summary.
 The summary's S&P 500 and Nasdaq Composite levels and moves come from the
 `Snapshot`; causes come from matching `MARKET_MOVE` items through the
@@ -149,11 +153,12 @@ sentence per index. An index present in `Snapshot.missing` renders as
 renders as "No major index moves." GLOBAL `MACRO` and `MARKET_MOVE` items are
 carried as `Report.otherNews` (the summary's "other important news") rather
 than dropped. A `COMPANY` or `SECTOR` item appears only in the company/sector
-section; it is never duplicated into the regional sections. Regional ranking,
-capping, and dedupe use descending publication date, a three-article-per-outlet
-cap, and a ten-item-per-region cap. Duplicate event keys are removed before
-capping. `GLOBAL` items are excluded from regional sections and remain in
-`otherNews`.
+section; it is never duplicated into the regional sections. Regional items are
+grouped in extraction order; ranking, per-outlet and per-region caps, and
+event-key deduplication are not implemented. Company/sector items are balanced
+round-robin across US, China, and a combined Global bucket, up to ten items.
+`GLOBAL` non-company/sector items are excluded from regional sections and remain
+in `otherNews`.
 
 ### 2.5 Ports (interfaces owned by the domain)
 
@@ -184,16 +189,18 @@ interface EvalStore {                      // persist / load eval reports
 }
 ```
 
-Each seam is real (two adapters) at completion; rows marked with a milestone
-are planned, not yet implemented:
+Current production and test implementations are listed below. Test fakes are
+listed separately from production wiring:
 
-| Port                | Adapters                                                  |
-|---------------------|-----------------------------------------------------------|
-| `MarketDataFetcher`  | `CompositeMarketDataFetcher` (Yahoo primary + per-asset-class fallbacks) |
-| `NewsSource`        | `RssNewsSource`, `GdeltNewsSource` (M8)                   |
-| `NewsItemExtractor` | `LangChain4jNewsItemExtractor` + deterministic fake (tests/eval) |
-| `ReportStore`       | `JsonReportStore` (M5) + in-memory fake (tests)           |
-| `EvalStore`         | `JsonEvalStore` (M7) + in-memory fake (tests)             |
+- `MarketDataFetcher`: `CompositeMarketDataFetcher` (Yahoo primary, CNBC
+  fixed-income fallback); `FakeMarketDataFetcher` in tests.
+- `NewsSource`: production wraps `RssNewsSource` and `GdeltNewsSource` in
+  `CompositeNewsSource`; `JsonCorpusNewsSource` is available but not wired.
+  Tests use static corpus fakes.
+- `NewsItemExtractor`: `LangChain4jNewsItemExtractor`;
+  `DeterministicNewsItemExtractor` in tests.
+- `ReportStore`: `JsonReportStore`; `InMemoryReportStore` in tests.
+- `EvalStore`: `JsonEvalStore` only; no test fake currently exists.
 
 `QuoteFetcher` is the adapters-internal seam: `YahooQuoteFetcher` and
 `CnbcQuoteFetcher` implement it; only the composite implements the domain port.
@@ -218,13 +225,13 @@ Use cases orchestrate the ports and domain services.
      preserves article order before assembly (ADR-0005).
   4. Section assembly → `Report`.
   5. `ReportStore.save(...)`.
-- **`RunEval`** — runs the gold set against the extractor and produces the
-  versioned eval report (see §6).
+- **`RunEval`** — filters fetched articles to gold-set IDs, runs extraction,
+  computes exact and field-level item metrics, checks that cited quote strings
+  occur in the article, and saves a versioned eval report (see §6). Evaluation
+  is sequential.
 
-Both use cases are deliberately deep: one method (`generate()`, `run()`)
-hides the whole orchestration. Tests cross the same seam as callers — the use
-case is driven with in-memory port fakes, never by reaching past the
-interface.
+Each use case keeps its orchestration behind one method (`generate()`, `run()`).
+`GenerateDailyReport` is tested through in-memory port fakes.
 
 `GenerateDailyReport.generate` is `suspend`: the `MarketDataFetcher` and
 `NewsItemExtractor` ports are suspending, and the HTTP layer calls the use case
@@ -254,9 +261,14 @@ Concrete adapters implementing the domain ports.
   are bounded at 15 seconds; CNBC decodes each quote independently so one
   malformed element does not discard the batch. The composite records
   unresolved instruments in `Snapshot.missing` and logs the gap.
-- **`RssNewsSource` / `GdeltNewsSource`** — free news ingestion (Google News RSS
-  / GDELT backbone + curated RSS list). Until M8 replaces it, the PoC wires
-  `JsonCorpusNewsSource` with the packaged static corpus.
+- **`RssNewsSource` / `GdeltNewsSource`** — the live news sources wired through
+  `CompositeNewsSource`. RSS currently uses Google News, Reuters, and BBC feeds;
+  GDELT uses its document API. Each source filters to the requested publication
+  date. The composite removes duplicate URLs and sorts by publication date and
+  id. `NewsSource.fetch` is synchronous; these adapters use `runBlocking` for
+  their HTTP calls. Fetch and parse failures are converted to empty results, so
+  a source outage can look like no articles. `JsonCorpusNewsSource` and the
+  packaged corpus remain available but are not wired in production.
 - **`LangChain4jNewsItemExtractor`** — the LLM adapter. Uses a single
   **OpenAI-compatible** chat model so DeepSeek, Kimi, Ollama, OpenRouter, etc.
   are swappable (ADR-0003); `baseUrl` and `model` come from
@@ -311,21 +323,24 @@ report returns `404` with a JSON error.
 
 ## 6. Evaluation pipeline
 
-A fixed, gold-labeled dataset measures the extractor and drives improvement
-(PRD §11):
+The current gold set has expected `NewsItem`s for eight packaged corpus articles;
+it does not contain expected snapshot facts. `RunEval` computes exact item
+precision/recall, field-level precision/recall, quote-presence rate
+(`unsupportedClaims`), and missing-item rate. Quote verification checks literal
+presence in an article's headline or body; it does not judge whether a quote
+semantically supports the assertion. It does not depend on the extractor's
+dropped-candidate count.
 
-- **Gold set** — per-article `gold/<id>.json` with expected `NewsItem`s and
-  expected snapshot facts.
-- Metrics: **accuracy** (field-level precision/recall), **unsupported claims**
-  (share of assertions whose cited source actually supports them), **missing
-  values** (recall of expected-but-omitted items), **cost** (LLM spend per
-  report and per `NewsItem`).
-- `RunEval` re-verifies every `source` **independently** — it checks each
-  cited span against the article text and the gold set itself, never trusting
-  the adapter's drop/failure counts. The adapter must not mark its own
-  homework; an adapter bug must show up in the metric, not hide behind it.
-- Output: a **versioned eval report** (JSON + Markdown), feeding the loop
-  measure → root-cause → change → re-measure.
+The production `NewsSource` is the live RSS/GDELT composite, whose article IDs do
+not match the packaged corpus IDs used by the gold set. Since `RunEval` filters
+fetched articles by those IDs, the wired `/eval/run` can receive no cases and
+report perfect ratios for empty denominators. The evaluation path must use the
+matching packaged articles before its results are meaningful.
+
+Cost is a placeholder (`0.0`), not measured LLM spend. Snapshot facts are not
+included in the gold set, and metric calculations do not yet have dedicated
+tests. `JsonEvalStore` writes versioned JSON and Markdown files; the HTTP API
+exposes the JSON report.
 
 ---
 
@@ -356,14 +371,14 @@ from the model's JSON answer to typed `NewsItem` candidates (§4).
 
 1. **Dependencies point inward, and the graph is acyclic.** Domain has zero
    outward deps; application never imports the adapters layer.
-2. **One composition root.** `main` is the only place that constructs adapters
-   and injects them into use cases; nothing else news up its dependencies.
-3. **Ports & adapters; seams are real, not hypothetical.** Every port has (or
-   will have) two adapters — a production one and a fallback/fake. The LLM
-   provider and data sources are implementation details behind
-   `NewsItemExtractor` and `MarketDataFetcher`.
-4. **Deep use cases.** One method per use case; orchestration stays inside;
-   tests drive the use case through port fakes.
+2. **One composition root.** `CompositionRoot` is the only place that constructs
+   adapters and injects them into use cases; nothing else wires dependencies.
+3. **Ports & adapters.** Production integrations sit behind domain ports; tests
+   use fakes where controlled inputs are needed. Providers and data sources are
+   implementation details behind `NewsItemExtractor`, `NewsSource`, and
+   `MarketDataFetcher`.
+4. **Deep use cases.** Each use case keeps orchestration behind one method;
+   `GenerateDailyReport` is tested through port fakes.
 5. **Invariants live in the types, not in pipeline steps** (parse, don't
    validate — §2.3).
 6. **Numbers are never extracted, only looked up** (ADR-0001).

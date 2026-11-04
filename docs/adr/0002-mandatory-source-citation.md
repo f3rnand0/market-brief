@@ -8,8 +8,8 @@ must produce citations, which adds friction in exchange for auditability.
 
 Enforcement, per the accepted architecture (ARCHITECTURE.md §2.3): the
 invariant lives in the type — `NewsItem` cannot be constructed without a
-`source` (parse, don't validate). Dropping and recording invalid candidates is
-an internal seam of the extractor adapter; only valid `NewsItem`s cross the
-`NewsItemExtractor` port. `RunEval` re-verifies every citation independently
-against the article text and the gold set — it never trusts the adapter's own
-drop counts.
+non-empty `source` (parse, don't validate). The extractor drops candidates that
+fail domain construction; only valid `NewsItem`s cross the `NewsItemExtractor`
+port. `RunEval` currently checks that each quoted span occurs in the article's
+headline or body, independently of the adapter's drop count. It does not assess
+whether the quote supports the assertion or compare it against a gold citation.

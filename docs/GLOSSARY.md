@@ -46,8 +46,10 @@ be backed by a source.
 _Avoid_: statement, summary
 
 **Source**:
-The citation attached to a NewsItem: which article(s) and which span(s) of text
-support the assertion. Mandatory.
+The mandatory citation attached to a NewsItem: one article id and one or more
+quote spans intended to support the assertion. The domain checks that the
+citation is non-empty; evaluation currently checks only that each quote occurs
+in the article text.
 _Avoid_: provenance, reference
 
 **Outlet**:
@@ -70,8 +72,9 @@ be source-backed.
 _Avoid_: value, figure
 
 **Gold set**:
-The manually labeled ground truth: per-article expected NewsItems and expected
-snapshot facts, used to score the extractor.
+The manually labeled ground truth used to score extraction. The current set
+contains expected NewsItems for eight articles; expected snapshot facts are not
+yet represented.
 
 **Previous day**:
 The calendar day before the report date; the report is generated on the
