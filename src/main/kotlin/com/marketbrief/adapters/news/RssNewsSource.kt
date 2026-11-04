@@ -7,26 +7,52 @@ import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
+import org.jsoup.Jsoup
+import org.slf4j.LoggerFactory
 import java.net.URI
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
+import java.util.concurrent.CancellationException
 import javax.xml.parsers.DocumentBuilderFactory
 
 class RssNewsSource(private val client: HttpClient, private val feedUrls: List<String> = DEFAULT_FEEDS) : NewsSource {
+
+    private val articleTextFetcher = PublisherArticleTextFetcher(client)
+
     override fun fetch(window: DayWindow): List<Article> = runBlocking {
-        feedUrls.flatMap { url ->
-            runCatching { RssParser.parse(client.get(url).bodyAsText()) }.getOrElse { emptyList() }
+        val candidates = feedUrls.flatMap { url ->
+            try {
+                RssParser.parse(client.get(url).bodyAsText())
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                log.warn("Could not read news feed {}", url, e)
+                emptyList()
+            }
         }.filter { it.publishedAt == window.date }.distinctBy { it.url }
+        candidates.mapNotNull { candidate ->
+            try {
+                articleTextFetcher.fetch(candidate)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                log.warn("Could not fetch publisher article {}", candidate.url, e)
+                null
+            }
+        }
     }
 
     companion object {
         val DEFAULT_FEEDS = listOf(
-            "https://news.google.com/rss/search?q=markets+finance&hl=en-US&gl=US&ceid=US:en",
             "https://feeds.reuters.com/reuters/businessNews",
             "https://feeds.bbci.co.uk/news/business/rss.xml",
+            "https://www.theguardian.com/business/rss",
         )
+
+        private val log = LoggerFactory.getLogger(RssNewsSource::class.java)
     }
 }
 
@@ -35,11 +61,33 @@ class GdeltNewsSource(
     private val endpoint: String =
         "https://api.gdeltproject.org/api/v2/doc/doc?query=markets&mode=artlist&format=rss&maxrecords=250",
 ) : NewsSource {
+
+    private val articleTextFetcher = PublisherArticleTextFetcher(client)
+
     override fun fetch(window: DayWindow): List<Article> = runBlocking {
-        runCatching {
+        val candidates = try {
             RssParser.parse(client.get(endpoint).bodyAsText())
                 .filter { it.publishedAt == window.date }.distinctBy { it.url }
-        }.getOrElse { emptyList() }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            log.warn("Could not read GDELT feed {}", endpoint, e)
+            emptyList()
+        }
+        candidates.mapNotNull { candidate ->
+            try {
+                articleTextFetcher.fetch(candidate)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                log.warn("Could not fetch publisher article {}", candidate.url, e)
+                null
+            }
+        }
+    }
+
+    companion object {
+        private val log = LoggerFactory.getLogger(GdeltNewsSource::class.java)
     }
 }
 
@@ -56,7 +104,7 @@ private object RssParser {
         DateTimeFormatter.ISO_INSTANT,
     )
 
-    fun parse(xml: String): List<Article> {
+    fun parse(xml: String): List<RssEntry> {
         val factory = DocumentBuilderFactory.newInstance().apply { isNamespaceAware = false }
         val document = factory.newDocumentBuilder().parse(xml.byteInputStream())
         return document.getElementsByTagName("item").let { nodes ->
@@ -72,11 +120,14 @@ private object RssParser {
                 val headline = field("title")
                 val date = parseDate(field("pubDate").ifBlank { field("published") }) ?: return@mapNotNull null
                 if (url.isBlank() || headline.isBlank()) return@mapNotNull null
-                Article(
+                val source = (0 until node.childNodes.length).firstNotNullOfOrNull { i ->
+                    node.childNodes.item(i).takeIf { it.nodeName.equals("source", true) }
+                }
+                RssEntry(
                     id = "rss-" + url.hashCode().toUInt().toString(16),
                     headline = headline,
-                    body = field("description").ifBlank { headline },
-                    outlet = runCatching { URI(url).host.removePrefix("www.") }.getOrDefault("RSS"),
+                    outlet = source?.textContent?.trim()?.takeIf { it.isNotBlank() }
+                        ?: runCatching { URI(url).host.removePrefix("www.") }.getOrDefault("RSS"),
                     url = url,
                     publishedAt = date,
                 )
@@ -91,5 +142,59 @@ private object RssParser {
                 else -> java.time.ZonedDateTime.parse(value, formatter).toLocalDate()
             }
         }.getOrNull()
+    }
+}
+
+private data class RssEntry(
+    val id: String,
+    val headline: String,
+    val outlet: String,
+    val url: String,
+    val publishedAt: LocalDate,
+)
+
+private class PublisherArticleTextFetcher(private val client: HttpClient) {
+    suspend fun fetch(entry: RssEntry): Article? {
+        val uri = URI(entry.url)
+        if (uri.scheme !in setOf("http", "https") || uri.host.isNullOrBlank()) return null
+        if (uri.host.equals("news.google.com", ignoreCase = true)) return null
+
+        val response = withTimeout(ARTICLE_REQUEST_TIMEOUT_MILLIS) {
+            client.get(entry.url) {
+                headers.append("User-Agent", USER_AGENT)
+                headers.append("Accept", "text/html,application/xhtml+xml")
+            }
+        }
+        if (response.status.value !in 200..299) return null
+
+        val document = Jsoup.parse(response.bodyAsText(), entry.url)
+        document.select("script,style,noscript,nav,footer,aside,form,button").remove()
+        val articleBody = ARTICLE_BODY_SELECTORS.firstNotNullOfOrNull { selector ->
+            document.selectFirst(selector)?.let(::bodyText)?.takeIf(::hasArticleLength)
+        } ?: return null
+
+        return Article(
+            id = entry.id,
+            headline = entry.headline,
+            body = articleBody,
+            outlet = entry.outlet,
+            url = document.selectFirst("link[rel=canonical]")?.absUrl("href")?.takeIf { it.isNotBlank() }
+                ?: entry.url,
+            publishedAt = entry.publishedAt,
+        )
+    }
+
+    private fun bodyText(element: org.jsoup.nodes.Element): String {
+        val paragraphs = element.select("p").map { it.text().trim() }.filter { it.isNotBlank() }
+        return paragraphs.ifEmpty { listOf(element.text()) }.joinToString("\n")
+    }
+
+    private fun hasArticleLength(text: String): Boolean = text.split(Regex("\\s+")).size >= MINIMUM_ARTICLE_WORDS
+
+    private companion object {
+        const val ARTICLE_REQUEST_TIMEOUT_MILLIS = 15_000L
+        const val MINIMUM_ARTICLE_WORDS = 80
+        const val USER_AGENT = "market-brief/0.1.0"
+        val ARTICLE_BODY_SELECTORS = listOf("[itemprop=articleBody]", "article", "main")
     }
 }

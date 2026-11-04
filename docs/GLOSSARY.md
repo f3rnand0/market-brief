@@ -57,7 +57,9 @@ The organization that published an article (Reuters, SCMP, …).
 _Avoid_: source (reserved for the NewsItem citation)
 
 **Article**:
-A single news piece: headline, body, outlet, URL, and publication date.
+A single news piece: headline, article text in `body`, outlet, URL, and
+publication date. For live news, `body` must contain text extracted from the
+publisher page; a headline or RSS teaser alone is not an Article for extraction.
 
 **Region**:
 A continent tag on a NewsItem: US, China, Europe, Latam, Asia, or Global.
