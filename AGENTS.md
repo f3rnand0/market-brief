@@ -2,15 +2,13 @@
 
 ## Documents
 
-- `docs/PRD.md` — requirements, scope, eval loop. Reach here for *what/why*
-  questions.
-- `docs/ARCHITECTURE.md` — layers, ports & adapters, seams. Follow it for any
-  code change: dependency direction, pure domain, two adapters per port.
-- `docs/GLOSSARY.md` — canonical domain vocabulary. Use its terms in code;
-  avoid its listed synonyms.
-- `MILESTONES.md` — implementation plan; work it in order.
+- `docs/PRD.md` — product goals and constraints.
+- `docs/ARCHITECTURE.md` — implemented layers, ports, and runtime behavior;
+  follow it for code changes.
+- `docs/GLOSSARY.md` — canonical domain vocabulary. Use its terms in code.
 
-When your change alters what a doc describes, update that doc.
+Keep current behavior distinct from product goals and unfinished work. When a
+change alters what a doc describes, update that doc.
 
 ## Build gate
 

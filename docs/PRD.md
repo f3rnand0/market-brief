@@ -88,9 +88,8 @@ See `GLOSSARY.md` for the canonical vocabulary. Highlights:
   fallbacks** (e.g. CNBC for non-US yields), behind a swappable `MarketDataFetcher` port that
   can run **multiple sources concurrently**.
 - **News**: Google News RSS / GDELT as the coverage backbone, plus a curated
-  RSS list of free outlets. The PoC uses a **static curated corpus** (~30–40
-  articles) spanning all regions, asset classes, and company/sector news,
-  deliberately seeded with unsupported-claim and missing-value traps.
+  RSS list of free outlets. Current wiring and remaining ingestion work are
+  described in [`ARCHITECTURE.md`](ARCHITECTURE.md).
 
 ## 9. Tech stack
 
@@ -119,6 +118,9 @@ Ollama, OpenRouter, etc. are swappable. Extraction uses LangChain4j
 - Output: a **versioned eval report** (JSON + Markdown).
 - Loop: measure → root-cause → change → re-measure.
 
+Current eval behavior and gaps, including the mismatch between live article IDs
+and packaged gold IDs, are documented in [`ARCHITECTURE.md`](ARCHITECTURE.md).
+
 ## 12. Upstream LangChain4j investigation (time-boxed spike)
 
 Probe LangChain4j structured output and provider behaviour using the `NewsItem`
@@ -131,6 +133,9 @@ DeepSeek / Kimi / open models).
 - **Time-boxed**; must not block the main report work.
 
 ## 13. Release plan
+
+These are intended release targets, not a description of current implementation.
+See [`ARCHITECTURE.md`](ARCHITECTURE.md) for current behavior.
 
 1. PoC — static corpus + market-data fetch + LLM extraction → JSON report →
    HTML page.

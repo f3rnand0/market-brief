@@ -31,8 +31,10 @@ See [`docs/PRD.md`](docs/PRD.md) for the product spec,
 PORT=9000 ./gradlew run
 ```
 
-The PoC wires a static news corpus, the Yahoo/CNBC market-data adapters, and
-the configured LLM extractor. Generate and read a report:
+The server wires Google News/Reuters/BBC RSS feeds, GDELT, the Yahoo/CNBC
+market-data adapters, and the configured LLM extractor. The packaged static
+corpus is available for tests but is not used by the running server. Generate
+and read a report:
 
 ```bash
 curl -X POST http://localhost:8080/report/generate
@@ -56,6 +58,11 @@ browser to view the formatted report, or save it locally:
 curl http://localhost:8080/report/2026-10-28.html \
   --output 2026-10-28.html
 ```
+
+Regional news is currently grouped in extraction order; ranking, per-outlet and
+per-region caps, and event deduplication are not implemented.
+See [the architecture guide](docs/ARCHITECTURE.md#24-section-assembly-rules) for
+current report-selection behavior.
 
 ## Configuration
 
