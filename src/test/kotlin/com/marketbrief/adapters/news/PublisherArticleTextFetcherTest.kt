@@ -66,6 +66,54 @@ class PublisherArticleTextFetcherTest {
         assertTrue(articles.isEmpty())
     }
 
+    @Test
+    fun `extracts text from publisher article body data element`() {
+        val articleText = List(12) { "The publisher reported a new market development with details for investors." }
+            .joinToString(" ")
+        val client = mockClient { request ->
+            when (request.url.encodedPath) {
+                "/feed" -> respond(rss("https://publisher.example/article"))
+
+                "/article" -> respond(
+                    "<html><div data-test=\"articleBody\">${paragraphs(articleText)}</div></html>",
+                    headers = headersOf(HttpHeaders.ContentType, "text/html"),
+                )
+
+                else -> respond("", HttpStatusCode.NotFound)
+            }
+        }
+
+        val articles = RssNewsSource(client, listOf("https://feed.example/feed"))
+            .fetch(DayWindow(LocalDate.of(2026, 11, 3)))
+
+        assertEquals(1, articles.size)
+        assertTrue(articles.single().body.contains("new market development"))
+    }
+
+    @Test
+    fun `extracts text from publisher content page section`() {
+        val articleText = List(12) { "The publisher reported a new market development with details for investors." }
+            .joinToString(" ")
+        val client = mockClient { request ->
+            when (request.url.encodedPath) {
+                "/feed" -> respond(rss("https://publisher.example/article"))
+
+                "/article" -> respond(
+                    "<html><section class=\"content-page\"><p>$articleText</p></section></html>",
+                    headers = headersOf(HttpHeaders.ContentType, "text/html"),
+                )
+
+                else -> respond("", HttpStatusCode.NotFound)
+            }
+        }
+
+        val articles = RssNewsSource(client, listOf("https://feed.example/feed"))
+            .fetch(DayWindow(LocalDate.of(2026, 11, 3)))
+
+        assertEquals(1, articles.size)
+        assertTrue(articles.single().body.contains("new market development"))
+    }
+
     private fun mockClient(handler: suspend MockRequestHandleScope.(HttpRequestData) -> HttpResponseData) =
         HttpClient(MockEngine) {
             engine {

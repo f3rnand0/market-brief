@@ -4,6 +4,7 @@ import com.marketbrief.domain.Article
 import com.marketbrief.domain.Direction
 import com.marketbrief.domain.Metric
 import com.marketbrief.domain.NewsItem
+import com.marketbrief.domain.NewsItemExtraction
 import com.marketbrief.domain.NewsItemExtractor
 import com.marketbrief.domain.NewsItemType
 import com.marketbrief.domain.Region
@@ -27,6 +28,8 @@ import java.util.concurrent.atomic.AtomicLong
 class LangChain4jNewsItemExtractor(
     private val chatModel: ChatModel,
     private val json: Json = Json { ignoreUnknownKeys = true },
+    private val inputCostPerMillionUsd: Double? = null,
+    private val outputCostPerMillionUsd: Double? = null,
 ) : NewsItemExtractor {
 
     private val droppedCandidates = AtomicLong()
@@ -35,32 +38,34 @@ class LangChain4jNewsItemExtractor(
     val droppedCandidateCount: Long
         get() = droppedCandidates.get()
 
-    override suspend fun extract(article: Article): List<NewsItem> {
-        val content = try {
-            chatModel.chatAsync(request(article)).await().aiMessage().text()
+    override suspend fun extract(article: Article): NewsItemExtraction {
+        val chatResponse = try {
+            chatModel.chatAsync(request(article)).await()
         } catch (e: CancellationException) {
             throw e
         } catch (e: LangChain4jException) {
             throw e
         }
+        val usage = chatResponse.tokenUsage()?.toExtractionUsage(inputCostPerMillionUsd, outputCostPerMillionUsd)
+        val content = chatResponse.aiMessage().text()
         if (content.isNullOrBlank()) {
             log.warn("Extraction returned no content for article {}", article.id)
-            return emptyList()
+            return NewsItemExtraction(emptyList(), usage)
         }
 
-        val response = try {
+        val parsed = try {
             json.decodeFromString<ExtractionResponse>(content)
         } catch (e: Exception) {
             log.warn("Extraction returned malformed JSON for article {}", article.id, e)
-            return emptyList()
+            return NewsItemExtraction(emptyList(), usage)
         }
 
-        val items = response.items.mapNotNull { candidate -> toNewsItem(article, candidate) }
-        val dropped = response.items.size - items.size
+        val items = parsed.items.mapNotNull { candidate -> toNewsItem(article, candidate) }
+        val dropped = parsed.items.size - items.size
         if (dropped > 0) {
-            log.warn("Dropped {} of {} candidates for article {}", dropped, response.items.size, article.id)
+            log.warn("Dropped {} of {} candidates for article {}", dropped, parsed.items.size, article.id)
         }
-        return items
+        return NewsItemExtraction(items, usage)
     }
 
     private fun request(article: Article): ChatRequest = ChatRequest.builder()
@@ -108,7 +113,11 @@ class LangChain4jNewsItemExtractor(
                 .timeout(Duration.ofSeconds(config.requestTimeoutSeconds))
                 .maxRetries(config.maxRetries)
                 .build()
-            return LangChain4jNewsItemExtractor(chatModel)
+            return LangChain4jNewsItemExtractor(
+                chatModel = chatModel,
+                inputCostPerMillionUsd = config.inputCostPerMillionUsd,
+                outputCostPerMillionUsd = config.outputCostPerMillionUsd,
+            )
         }
 
         private val log = LoggerFactory.getLogger(LangChain4jNewsItemExtractor::class.java)

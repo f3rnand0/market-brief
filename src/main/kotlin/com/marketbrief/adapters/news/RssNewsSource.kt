@@ -47,9 +47,12 @@ class RssNewsSource(private val client: HttpClient, private val feedUrls: List<S
 
     companion object {
         val DEFAULT_FEEDS = listOf(
-            "https://feeds.reuters.com/reuters/businessNews",
             "https://feeds.bbci.co.uk/news/business/rss.xml",
+            "https://feeds.bbci.co.uk/news/world/asia/rss.xml",
             "https://www.theguardian.com/business/rss",
+            "https://www.cnbc.com/id/100003114/device/rss/rss.html",
+            "https://en.mercopress.com/rss/economy",
+            "https://en.mercopress.com/rss/latin-america",
         )
 
         private val log = LoggerFactory.getLogger(RssNewsSource::class.java)
@@ -195,6 +198,13 @@ private class PublisherArticleTextFetcher(private val client: HttpClient) {
         const val ARTICLE_REQUEST_TIMEOUT_MILLIS = 15_000L
         const val MINIMUM_ARTICLE_WORDS = 80
         const val USER_AGENT = "market-brief/0.1.0"
-        val ARTICLE_BODY_SELECTORS = listOf("[itemprop=articleBody]", "article", "main")
+        val ARTICLE_BODY_SELECTORS = listOf(
+            "[itemprop=articleBody]",
+            "[data-test=articleBody]",
+            ".ArticleBody-articleBody",
+            "section.content-page",
+            "article",
+            "main",
+        )
     }
 }

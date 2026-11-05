@@ -33,9 +33,13 @@ class LiveExtractionTest {
         val config = ApplicationConfigLoader.load().toOpenAiCompatibleConfig()
         val extractor = LangChain4jNewsItemExtractor.fromConfig(config)
 
-        val items = extractor.extract(article)
+        val extraction = extractor.extract(article)
+        val items = extraction.items
 
-        println("live extraction: ${items.size} item(s), ${extractor.droppedCandidateCount} dropped")
+        println(
+            "live extraction: ${items.size} item(s), ${extractor.droppedCandidateCount} dropped, " +
+                "${extraction.usage?.inputTokens} input tokens, ${extraction.usage?.outputTokens} output tokens",
+        )
         assertTrue(items.isNotEmpty(), "expected at least one item from the sample article")
         val articleText = "${article.headline}\n${article.body}".normalized()
         items.forEach { item ->

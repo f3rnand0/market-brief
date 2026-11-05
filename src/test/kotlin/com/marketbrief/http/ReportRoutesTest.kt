@@ -1,6 +1,7 @@
 package com.marketbrief.http
 
 import com.marketbrief.application.GenerateDailyReport
+import com.marketbrief.domain.Article
 import com.marketbrief.domain.Instrument
 import com.marketbrief.domain.InstrumentQuote
 import com.marketbrief.domain.MarketDataFetcher
@@ -132,7 +133,21 @@ class ReportRoutesTest {
         reportStore = store,
     )
 
-    private fun report(): Report = ReportAssembler.assemble(date, snapshot, items)
+    private fun report(): Report = ReportAssembler.assemble(
+        date,
+        snapshot,
+        items.map { item ->
+            Article(
+                item.source.articleId,
+                item.source.articleId,
+                item.source.articleId,
+                item.source.articleId,
+                "https://example.com",
+                date,
+            )
+        },
+        items,
+    )
 
     private fun fixedIncomeQuote(dto: ReportDto) = dto.snapshot
         .first { it.assetClass == "FIXED_INCOME" }

@@ -20,15 +20,14 @@ object JsonGoldSet {
                 Json.decodeFromString<List<String>>(it.readText())
             }
                 ?: error("Gold set index not found: $resource")
-        return GoldSet(
-            ids.map { id ->
-                val file = "gold/$id.json"
-                val entry = loader.getResourceAsStream(file)?.bufferedReader()?.use {
-                    Json.decodeFromString<GoldFile>(it.readText())
-                } ?: error("Gold set case not found: $file")
-                GoldCase(id, entry.items.map { it.toDomain(id) })
-            },
-        )
+        val cases = ids.map { id ->
+            val file = "gold/$id.json"
+            val entry = loader.getResourceAsStream(file)?.bufferedReader()?.use {
+                Json.decodeFromString<GoldFile>(it.readText())
+            } ?: error("Gold set case not found: $file")
+            GoldCase(id, entry.items.map { it.toDomain(id) })
+        }
+        return GoldSet(cases)
     }
 }
 

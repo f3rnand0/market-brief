@@ -63,7 +63,8 @@ class LangChain4jNewsItemExtractorTest {
         StubChatServer(content).use { server ->
             val extractor = extractor(server)
 
-            val items = extractor.extract(article)
+            val extraction = extractor.extract(article)
+            val items = extraction.items
 
             assertEquals(1, items.size, "uncited candidate must not cross the port")
             val item = items.single()
@@ -111,7 +112,7 @@ class LangChain4jNewsItemExtractorTest {
         StubChatServer(content).use { server ->
             val extractor = extractor(server)
 
-            val items = extractor.extract(article)
+            val items = extractor.extract(article).items
 
             assertEquals(listOf("Semiconductors"), items.flatMap { item -> item.subjects }.map { it.name })
             assertEquals(2, extractor.droppedCandidateCount)
@@ -145,7 +146,7 @@ class LangChain4jNewsItemExtractorTest {
         StubChatServer("not json at all").use { server ->
             val extractor = extractor(server)
 
-            assertTrue(extractor.extract(article).isEmpty())
+            assertTrue(extractor.extract(article).items.isEmpty())
             assertEquals(0, extractor.droppedCandidateCount)
         }
     }
@@ -178,10 +179,15 @@ class LangChain4jNewsItemExtractorTest {
                     apiKey = "test-key",
                     requestTimeoutSeconds = 30,
                     maxRetries = 0,
+                    inputCostPerMillionUsd = 0.3,
+                    outputCostPerMillionUsd = 1.2,
                 ),
             )
 
-            extractor.extract(article)
+            val extraction = extractor.extract(article)
+            assertEquals(1, extraction.usage?.inputTokens)
+            assertEquals(1, extraction.usage?.outputTokens)
+            assertEquals("0.000001500000", extraction.usage?.estimatedCostUsd.toString())
 
             val request = Json.parseToJsonElement(server.requests.single()).jsonObject
             assertEquals("stub-model", request.getValue("model").jsonPrimitive.content)
@@ -198,7 +204,7 @@ class LangChain4jNewsItemExtractorTest {
     )
 }
 
-private class StubChatServer(content: String, private val status: Int = 200) : AutoCloseable {
+internal class StubChatServer(content: String, private val status: Int = 200) : AutoCloseable {
 
     val requests = CopyOnWriteArrayList<String>()
 

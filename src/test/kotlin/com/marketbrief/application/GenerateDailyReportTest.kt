@@ -6,6 +6,7 @@ import com.marketbrief.domain.DayWindow
 import com.marketbrief.domain.Instrument
 import com.marketbrief.domain.MarketDataFetcher
 import com.marketbrief.domain.NewsItem
+import com.marketbrief.domain.NewsItemExtraction
 import com.marketbrief.domain.NewsItemExtractor
 import com.marketbrief.domain.NewsItemType
 import com.marketbrief.domain.NewsSource
@@ -106,11 +107,11 @@ class GenerateDailyReportTest {
         val bothStarted = CompletableDeferred<Unit>()
         val started = AtomicInteger()
         val extractor = object : NewsItemExtractor {
-            override suspend fun extract(article: Article): List<NewsItem> {
+            override suspend fun extract(article: Article): NewsItemExtraction {
                 // Both articles must be in flight at once; a serial implementation times out here.
                 if (started.incrementAndGet() == 2) bothStarted.complete(Unit)
                 withTimeout(5.seconds) { bothStarted.await() }
-                return listOf(item(type = NewsItemType.COMPANY, subject = article.id))
+                return NewsItemExtraction(listOf(item(type = NewsItemType.COMPANY, subject = article.id)))
             }
         }
 
@@ -134,7 +135,7 @@ class GenerateDailyReportTest {
     fun `systemic extraction failure aborts without saving a report`() = runBlocking {
         val store = InMemoryReportStore()
         val extractor = object : NewsItemExtractor {
-            override suspend fun extract(article: Article): List<NewsItem> =
+            override suspend fun extract(article: Article): NewsItemExtraction =
                 throw IllegalStateException("provider down")
         }
 
@@ -184,14 +185,14 @@ class GenerateDailyReportTest {
         val calls = AtomicInteger()
 
         val extractor = object : NewsItemExtractor {
-            override suspend fun extract(article: Article): List<NewsItem> {
+            override suspend fun extract(article: Article): NewsItemExtraction {
                 if (calls.incrementAndGet() == 1) {
                     firstEntered.complete(Unit)
                     releaseFirst.await()
                 } else {
                     secondEntered.complete(Unit)
                 }
-                return listOf(item(type = NewsItemType.COMPANY, subject = article.id))
+                return NewsItemExtraction(listOf(item(type = NewsItemType.COMPANY, subject = article.id)))
             }
         }
 

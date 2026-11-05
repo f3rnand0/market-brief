@@ -19,6 +19,8 @@ class ApplicationConfigLoaderTest {
               apiKeyEnv: DEEPSEEK_KEY
               requestTimeoutSeconds: 90
               maxRetries: 3
+              inputCostPerMillionUsd: 0.30
+              outputCostPerMillionUsd: 1.20
             """.trimIndent(),
         )
 
@@ -27,6 +29,8 @@ class ApplicationConfigLoaderTest {
         assertEquals("DEEPSEEK_KEY", config.llm.apiKeyEnv)
         assertEquals(90, config.llm.requestTimeoutSeconds)
         assertEquals(3, config.llm.maxRetries)
+        assertEquals(0.30, config.llm.inputCostPerMillionUsd)
+        assertEquals(1.20, config.llm.outputCostPerMillionUsd)
     }
 
     @Test
@@ -81,6 +85,8 @@ class ApplicationConfigLoaderTest {
 
         assertTrue(config.llm.baseUrl.startsWith("http"))
         assertTrue(config.llm.model.isNotBlank())
+        assertEquals(0.30, config.llm.inputCostPerMillionUsd)
+        assertEquals(1.20, config.llm.outputCostPerMillionUsd)
     }
 
     @Test
