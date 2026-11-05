@@ -1,5 +1,6 @@
 package com.marketbrief
 
+import com.marketbrief.adapters.llm.LangChain4jClaimSupportJudge
 import com.marketbrief.adapters.llm.LangChain4jNewsItemExtractor
 import com.marketbrief.adapters.llm.OpenAiCompatibleConfig
 import com.marketbrief.adapters.marketdata.CnbcQuoteFetcher
@@ -7,6 +8,7 @@ import com.marketbrief.adapters.marketdata.CompositeMarketDataFetcher
 import com.marketbrief.adapters.marketdata.YahooQuoteFetcher
 import com.marketbrief.adapters.news.CompositeNewsSource
 import com.marketbrief.adapters.news.GdeltNewsSource
+import com.marketbrief.adapters.news.JsonCorpusNewsSource
 import com.marketbrief.adapters.news.JsonGoldSet
 import com.marketbrief.adapters.news.RssNewsSource
 import com.marketbrief.adapters.report.JsonEvalStore
@@ -38,7 +40,10 @@ object CompositionRoot {
         val reportStore = JsonReportStore(Path.of(config.storage.reportsDir))
         val evalStore = JsonEvalStore(Path.of(config.storage.evalsDir))
         val newsSource = CompositeNewsSource(listOf(RssNewsSource(httpClient), GdeltNewsSource(httpClient)))
-        val extractor = LangChain4jNewsItemExtractor.fromConfig(config.toOpenAiCompatibleConfig(env))
+        val evalNewsSource = JsonCorpusNewsSource.fromResource()
+        val llmConfig = config.toOpenAiCompatibleConfig(env)
+        val extractor = LangChain4jNewsItemExtractor.fromConfig(llmConfig)
+        val claimSupportJudge = LangChain4jClaimSupportJudge.fromConfig(llmConfig)
         val generateDailyReport = GenerateDailyReport(
             marketDataFetcher = marketDataFetcher,
             newsSource = newsSource,
@@ -49,7 +54,13 @@ object CompositionRoot {
         return ReportDependencies(
             generateDailyReport,
             reportStore,
-            RunEval(newsSource, extractor, evalStore, JsonGoldSet.fromResource()),
+            RunEval(
+                evalNewsSource,
+                extractor,
+                evalStore,
+                JsonGoldSet.fromResource(),
+                claimSupportJudge,
+            ),
             evalStore,
         )
     }
@@ -75,5 +86,7 @@ fun ApplicationConfig.toOpenAiCompatibleConfig(env: Map<String, String> = System
         apiKey = apiKey,
         requestTimeoutSeconds = llm.requestTimeoutSeconds,
         maxRetries = llm.maxRetries,
+        inputCostPerMillionUsd = llm.inputCostPerMillionUsd,
+        outputCostPerMillionUsd = llm.outputCostPerMillionUsd,
     )
 }

@@ -1,20 +1,23 @@
 package com.marketbrief.domain
 
 import java.time.LocalDate
+import java.util.Locale
 
 object ReportAssembler {
 
     private val REGIONAL_SECTIONS = Region.entries.filter { it != Region.GLOBAL }
     private const val COMPANY_SECTOR_LIMIT = 10
+    private const val REGIONAL_ITEM_LIMIT = 5
+    private const val REGIONAL_OUTLET_LIMIT = 2
 
     private val NewsItem.isCompanyOrSector: Boolean
         get() = type == NewsItemType.COMPANY || type == NewsItemType.SECTOR
 
-    fun assemble(date: LocalDate, snapshot: Snapshot, items: List<NewsItem>): Report = Report(
+    fun assemble(date: LocalDate, snapshot: Snapshot, articles: List<Article>, items: List<NewsItem>): Report = Report(
         date = date,
         summary = buildSummary(snapshot, items),
         snapshot = snapshot,
-        regionalNews = regionalSections(items),
+        regionalNews = regionalSections(articles, items),
         companySectorNews = balancedCompanySector(items),
         otherNews = otherNewsItems(items),
     )
@@ -57,9 +60,45 @@ object ReportAssembler {
         }
     }
 
-    private fun regionalSections(items: List<NewsItem>): Map<Region, List<NewsItem>> = items
-        .filter { it.region in REGIONAL_SECTIONS && !it.isCompanyOrSector }
-        .groupBy { it.region }
+    private fun regionalSections(articles: List<Article>, items: List<NewsItem>): Map<Region, List<NewsItem>> {
+        val articlesById = articles.associateBy(Article::id)
+        return items
+            .filter { it.region in REGIONAL_SECTIONS && !it.isCompanyOrSector }
+            .groupBy { it.region }
+            .mapValues { (_, regionalItems) ->
+                val outlets = mutableMapOf<String, Int>()
+                val eventKeys = mutableSetOf<String>()
+                regionalItems
+                    .sortedWith(
+                        compareByDescending<NewsItem> { articlesById[it.source.articleId]?.publishedAt }
+                            .thenBy { articlesById[it.source.articleId]?.outlet.orEmpty() }
+                            .thenBy { it.source.articleId },
+                    )
+                    .filter { item ->
+                        val article = articlesById[item.source.articleId]
+                        val outlet = article?.outlet ?: item.source.articleId
+                        val eventKey = item.eventKey()
+                        if (eventKey in eventKeys || (outlets[outlet] ?: 0) >= REGIONAL_OUTLET_LIMIT) {
+                            false
+                        } else {
+                            eventKeys += eventKey
+                            outlets[outlet] = (outlets[outlet] ?: 0) + 1
+                            true
+                        }
+                    }
+                    .take(REGIONAL_ITEM_LIMIT)
+            }
+            .filterValues(List<NewsItem>::isNotEmpty)
+    }
+
+    private fun NewsItem.eventKey(): String = listOf(
+        type.name,
+        region.name,
+        subjects.map { it.name.trim().lowercase(Locale.ROOT).replace(Regex("\\s+"), " ") }
+            .distinct()
+            .sorted()
+            .joinToString("|"),
+    ).joinToString(":")
 
     private fun otherNewsItems(items: List<NewsItem>): List<NewsItem> = items
         .filter { it.region == Region.GLOBAL && !it.isCompanyOrSector }

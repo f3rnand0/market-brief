@@ -12,6 +12,38 @@ class ReportAssemblerTest {
     private val snapshot = Snapshot(emptyList())
 
     @Test
+    fun `regional news ranks newest first, deduplicates events, and applies outlet and section caps`() {
+        val articles = listOf(
+            article("old-a", "Outlet A").copy(publishedAt = date.minusDays(2)),
+            article("new-a", "Outlet A").copy(publishedAt = date),
+            article("middle-a", "Outlet A").copy(publishedAt = date.minusDays(1)),
+            article("new-b", "Outlet B").copy(publishedAt = date),
+            article("fourth", "Outlet C").copy(publishedAt = date.minusDays(1)),
+            article("fifth", "Outlet D").copy(publishedAt = date.minusDays(1)),
+            article("sixth", "Outlet E").copy(publishedAt = date.minusDays(1)),
+        )
+        val items = listOf(
+            item(type = NewsItemType.MACRO, subject = "Old").from("old-a"),
+            item(type = NewsItemType.MACRO, subject = "Same Event").from("middle-a"),
+            item(type = NewsItemType.MACRO, subject = " same   event ").from("new-b"),
+            item(type = NewsItemType.MACRO, subject = "Newest A").from("new-a"),
+            item(type = NewsItemType.MACRO, subject = "Fourth").from("fourth"),
+            item(type = NewsItemType.MACRO, subject = "Fifth").from("fifth"),
+            item(type = NewsItemType.MACRO, subject = "Sixth").from("sixth"),
+            item(type = NewsItemType.MACRO, region = Region.GLOBAL, subject = "Global").from("new-b"),
+        )
+
+        val report = ReportAssembler.assemble(date, snapshot, articles, items)
+
+        assertEquals(
+            listOf("new-a", "new-b", "fourth", "fifth", "sixth"),
+            report.regionalNews[Region.US].orEmpty().map { it.source.articleId },
+        )
+        assertTrue(report.regionalNews.values.flatten().none { it.region == Region.GLOBAL })
+        assertEquals(listOf("Global"), report.otherNews.map { it.subjects.single().name })
+    }
+
+    @Test
     fun `regional news is grouped by region, Global items excluded`() {
         val items = listOf(
             item(type = NewsItemType.MACRO, region = Region.US, subject = "Fed"),
@@ -20,7 +52,7 @@ class ReportAssemblerTest {
             item(type = NewsItemType.MACRO, region = Region.GLOBAL, subject = "Oil"),
         )
 
-        val regional = ReportAssembler.assemble(date, snapshot, items).regionalNews
+        val regional = assemble(snapshot, items).regionalNews
 
         assertEquals(setOf(Region.US, Region.CHINA), regional.keys)
         assertEquals(2, regional[Region.US]!!.size)
@@ -32,7 +64,7 @@ class ReportAssemblerTest {
         val sector = item(type = NewsItemType.SECTOR, region = Region.GLOBAL, subject = "Semiconductors")
         val macro = item(type = NewsItemType.MACRO, region = Region.US, subject = "Fed")
 
-        val report = ReportAssembler.assemble(date, snapshot, listOf(company, sector, macro))
+        val report = assemble(snapshot, listOf(company, sector, macro))
 
         assertEquals(listOf(macro), report.regionalNews[Region.US])
         assertTrue(
@@ -53,7 +85,7 @@ class ReportAssemblerTest {
             item(type = NewsItemType.SECTOR, region = Region.GLOBAL, subject = "Semiconductors"),
         )
 
-        val section = ReportAssembler.assemble(date, snapshot, items).companySectorNews
+        val section = assemble(snapshot, items).companySectorNews
 
         assertEquals(4, section.size)
         assertTrue(section.any { it.region == Region.CHINA }, "must include China")
@@ -68,7 +100,7 @@ class ReportAssemblerTest {
             repeat(4) { add(item(type = NewsItemType.SECTOR, region = Region.GLOBAL, subject = "Global $it")) }
         }
 
-        val section = ReportAssembler.assemble(date, snapshot, items).companySectorNews
+        val section = assemble(snapshot, items).companySectorNews
 
         assertEquals(10, section.size)
     }
@@ -90,7 +122,7 @@ class ReportAssemblerTest {
             item(type = NewsItemType.COMPANY, subject = "Apple"),
         )
 
-        val summary = ReportAssembler.assemble(date, indexSnapshot(), items).summary
+        val summary = assemble(indexSnapshot(), items).summary
 
         assertTrue(summary.contains("S&P 500: 6912.50 (0.61%)."))
         assertTrue(summary.contains("Nasdaq Composite: 23950.75 (-0.70%)."))
@@ -108,7 +140,7 @@ class ReportAssemblerTest {
             item(type = NewsItemType.MARKET_MOVE, subject = "Nasdaq", cause = "tech selloff"),
         )
 
-        val summary = ReportAssembler.assemble(date, indexSnapshot(), items).summary
+        val summary = assemble(indexSnapshot(), items).summary
 
         assertEquals(1, Regex("S&P 500:").findAll(summary).count())
         assertTrue(summary.contains("Caused by: hawkish Fed comments; weak earnings."))
@@ -126,7 +158,7 @@ class ReportAssemblerTest {
             ),
         )
 
-        val summary = ReportAssembler.assemble(date, Snapshot(emptyList()), items).summary
+        val summary = assemble(Snapshot(emptyList()), items).summary
 
         assertEquals("No major index moves.", summary)
     }
@@ -138,7 +170,7 @@ class ReportAssemblerTest {
             missing = setOf(ReportInstruments.sp500, ReportInstruments.nasdaqComposite),
         )
 
-        val summary = ReportAssembler.assemble(date, snapshot, emptyList()).summary
+        val summary = assemble(snapshot, emptyList()).summary
 
         assertEquals("S&P 500: data unavailable. Nasdaq Composite: data unavailable.", summary)
     }
@@ -150,7 +182,7 @@ class ReportAssemblerTest {
             missing = setOf(ReportInstruments.nasdaqComposite),
         )
 
-        val summary = ReportAssembler.assemble(date, snapshot, emptyList()).summary
+        val summary = assemble(snapshot, emptyList()).summary
 
         assertEquals("S&P 500: 6912.50 (0.61%). Nasdaq Composite: data unavailable.", summary)
     }
@@ -163,7 +195,7 @@ class ReportAssemblerTest {
             cause = "hawkish Fed comments",
         ).copy(subjects = listOf(Subject("S&P 500"), Subject("Nasdaq Composite")))
 
-        val summary = ReportAssembler.assemble(date, indexSnapshot(), listOf(jointMove)).summary
+        val summary = assemble(indexSnapshot(), listOf(jointMove)).summary
 
         assertTrue(summary.contains("S&P 500: 6912.50 (0.61%). Caused by: hawkish Fed comments."))
         assertTrue(summary.contains("Nasdaq Composite: 23950.75 (-0.70%). Caused by: hawkish Fed comments."))
@@ -174,7 +206,7 @@ class ReportAssemblerTest {
         val macro = item(type = NewsItemType.MACRO, region = Region.GLOBAL, subject = "Federal Reserve")
         val move = item(type = NewsItemType.MARKET_MOVE, region = Region.GLOBAL, subject = "Oil")
 
-        val report = ReportAssembler.assemble(date, snapshot, listOf(macro, move))
+        val report = assemble(snapshot, listOf(macro, move))
 
         assertEquals(listOf(macro, move), report.otherNews)
         assertTrue(report.regionalNews.isEmpty())
@@ -185,7 +217,7 @@ class ReportAssemblerTest {
     fun `global company and sector items stay in the company-sector section`() {
         val company = item(type = NewsItemType.COMPANY, region = Region.GLOBAL, subject = "TSMC")
 
-        val report = ReportAssembler.assemble(date, snapshot, listOf(company))
+        val report = assemble(snapshot, listOf(company))
 
         assertEquals(listOf(company), report.companySectorNews)
         assertTrue(report.otherNews.isEmpty())
@@ -193,10 +225,30 @@ class ReportAssemblerTest {
 
     @Test
     fun `summary includes an index quote even without a matching news item`() {
-        val summary = ReportAssembler.assemble(date, indexSnapshot(), emptyList()).summary
+        val summary = assemble(indexSnapshot(), emptyList()).summary
 
         assertEquals("S&P 500: 6912.50 (0.61%). Nasdaq Composite: 23950.75 (-0.70%).", summary)
     }
+
+    private fun assemble(snapshot: Snapshot, items: List<NewsItem>) = ReportAssembler.assemble(
+        date,
+        snapshot,
+        items.map { item ->
+            Article(
+                id = item.source.articleId,
+                headline = item.source.articleId,
+                body = item.source.articleId,
+                outlet = item.source.articleId,
+                url = "https://example.com/${item.source.articleId}",
+                publishedAt = date,
+            )
+        }.distinctBy(Article::id),
+        items,
+    )
+
+    private fun NewsItem.from(articleId: String) = copy(
+        source = Source(articleId, source.quotes),
+    )
 
     private fun indexSnapshot() = Snapshot(
         listOf(

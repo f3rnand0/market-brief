@@ -20,6 +20,7 @@ dependencies {
     implementation("dev.langchain4j:langchain4j-core")
     implementation("dev.langchain4j:langchain4j-open-ai")
     implementation("com.charleskorn.kaml:kaml:0.104.0")
+    implementation("org.jsoup:jsoup:1.20.1")
 
     implementation("io.ktor:ktor-server-core:$ktorVersion")
     implementation("io.ktor:ktor-server-netty:$ktorVersion")

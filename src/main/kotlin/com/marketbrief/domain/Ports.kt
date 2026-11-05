@@ -26,7 +26,11 @@ interface NewsItemExtractor {
      * model output, contribute no items; provider and transport failures propagate
      * so a broken configuration or outage fails the run loudly.
      */
-    suspend fun extract(article: Article): List<NewsItem>
+    suspend fun extract(article: Article): NewsItemExtraction
+}
+
+interface ClaimSupportJudge {
+    suspend fun judge(item: NewsItem): ClaimSupportJudgment
 }
 
 interface ReportStore {

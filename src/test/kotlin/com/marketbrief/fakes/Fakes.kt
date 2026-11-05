@@ -2,10 +2,13 @@ package com.marketbrief.fakes
 
 import com.marketbrief.domain.Article
 import com.marketbrief.domain.DayWindow
+import com.marketbrief.domain.EvalReport
+import com.marketbrief.domain.EvalStore
 import com.marketbrief.domain.Instrument
 import com.marketbrief.domain.InstrumentQuote
 import com.marketbrief.domain.MarketDataFetcher
 import com.marketbrief.domain.NewsItem
+import com.marketbrief.domain.NewsItemExtraction
 import com.marketbrief.domain.NewsItemExtractor
 import com.marketbrief.domain.NewsSource
 import com.marketbrief.domain.Report
@@ -25,7 +28,8 @@ class StaticCorpusNewsSource(private val articles: List<Article>) : NewsSource {
 
 class DeterministicNewsItemExtractor(private val itemsByArticleId: Map<String, List<NewsItem>>) :
     NewsItemExtractor {
-    override suspend fun extract(article: Article): List<NewsItem> = itemsByArticleId[article.id].orEmpty()
+    override suspend fun extract(article: Article): NewsItemExtraction =
+        NewsItemExtraction(itemsByArticleId[article.id].orEmpty())
 }
 
 class InMemoryReportStore : ReportStore {
@@ -36,4 +40,14 @@ class InMemoryReportStore : ReportStore {
     }
 
     override fun load(date: LocalDate): Report? = reports[date]
+}
+
+class InMemoryEvalStore : EvalStore {
+    private val reports = mutableMapOf<String, EvalReport>()
+
+    override fun save(report: EvalReport) {
+        reports[report.id] = report
+    }
+
+    override fun load(id: String): EvalReport? = reports[id]
 }

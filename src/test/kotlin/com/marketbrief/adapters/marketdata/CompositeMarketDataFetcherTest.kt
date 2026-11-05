@@ -4,6 +4,7 @@ import com.marketbrief.domain.AssetClass
 import com.marketbrief.domain.Instrument
 import com.marketbrief.domain.InstrumentQuote
 import com.marketbrief.domain.ReportInstruments
+import com.marketbrief.domain.Snapshot
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -27,15 +28,9 @@ class CompositeMarketDataFetcherTest {
         )
 
         val snapshot = composite.snapshot(ReportInstruments.all)
-        val quotes = snapshot.quotes.associateBy { it.instrument }
+        val expectedSnapshot = QuoteFixtures.expectedSnapshot("2026-10-28")
 
-        assertEquals(ReportInstruments.all, quotes.keys)
-        assertTrue(snapshot.missing.isEmpty())
-        assertQuote(quotes, ReportInstruments.sp500, "6912.50", "0.61")
-        assertQuote(quotes, ReportInstruments.us10y, "4.995", "0.18")
-        assertQuote(quotes, ReportInstruments.germany10y, "3.3585", "0.09")
-        assertQuote(quotes, ReportInstruments.china10y, "1.633", "0.00")
-        assertQuote(quotes, ReportInstruments.bitcoin, "112450.00", "1.49")
+        assertSnapshotEquals(expectedSnapshot, snapshot)
     }
 
     @Test
@@ -106,4 +101,21 @@ class CompositeMarketDataFetcherTest {
                     emptyList()
                 }
         }
+
+    private fun assertSnapshotEquals(expected: Snapshot, actual: Snapshot) {
+        assertEquals(expected.missing, actual.missing)
+        val expectedQuotes = expected.quotes.associateBy { it.instrument }
+        val actualQuotes = actual.quotes.associateBy { it.instrument }
+        assertEquals(expectedQuotes.keys, actualQuotes.keys)
+        expectedQuotes.forEach { (instrument, expectedQuote) ->
+            val actualQuote = actualQuotes.getValue(instrument)
+            assertEquals(0, expectedQuote.value.compareTo(actualQuote.value), "$instrument value")
+            assertEquals(0, expectedQuote.change.compareTo(actualQuote.change), "$instrument change")
+            assertEquals(
+                0,
+                expectedQuote.changePercent.compareTo(actualQuote.changePercent),
+                "$instrument percent change",
+            )
+        }
+    }
 }

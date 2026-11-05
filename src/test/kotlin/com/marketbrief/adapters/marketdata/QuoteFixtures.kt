@@ -2,6 +2,8 @@ package com.marketbrief.adapters.marketdata
 
 import com.marketbrief.domain.Instrument
 import com.marketbrief.domain.InstrumentQuote
+import com.marketbrief.domain.ReportInstruments
+import com.marketbrief.domain.Snapshot
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
@@ -11,6 +13,7 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.decodeURLPart
 import io.ktor.http.headersOf
+import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
@@ -61,12 +64,38 @@ object QuoteFixtures {
         }
     }
 
+    fun expectedSnapshot(date: String): Snapshot {
+        val fixture = Json.decodeFromString<SnapshotFixture>(resource("/fixtures/marketdata/snapshot-$date.json"))
+        val quotes = fixture.quotes.map { expected ->
+            val instrument = ReportInstruments.all.single { it.name == expected.instrument }
+            InstrumentQuote(
+                instrument,
+                BigDecimal(expected.value),
+                BigDecimal(expected.change),
+                BigDecimal(expected.changePercent),
+            )
+        }
+        val missing = fixture.missing.map { name -> ReportInstruments.all.single { it.name == name } }.toSet()
+        return Snapshot(quotes, missing)
+    }
+
     private fun resource(path: String): String = checkNotNull(readResourceOrNull(path)) { "missing fixture $path" }
 
     private fun readResourceOrNull(path: String): String? = QuoteFixtures::class.java.getResourceAsStream(path)
         ?.bufferedReader()
         ?.use { it.readText() }
 }
+
+@kotlinx.serialization.Serializable
+private data class SnapshotFixture(val date: String, val quotes: List<SnapshotQuoteFixture>, val missing: List<String>)
+
+@kotlinx.serialization.Serializable
+private data class SnapshotQuoteFixture(
+    val instrument: String,
+    val value: String,
+    val change: String,
+    val changePercent: String,
+)
 
 internal fun assertQuote(
     quotes: Map<Instrument, InstrumentQuote>,

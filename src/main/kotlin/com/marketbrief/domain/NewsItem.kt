@@ -1,5 +1,7 @@
 package com.marketbrief.domain
 
+import java.math.BigDecimal
+
 enum class NewsItemType { MARKET_MOVE, COMPANY, SECTOR, MACRO }
 
 enum class Region { US, CHINA, EUROPE, LATAM, ASIA, GLOBAL }
@@ -44,5 +46,21 @@ data class NewsItem(
             "Only MARKET_MOVE items may carry a cause"
         }
         require(cause == null || cause.isNotBlank()) { "Cause must not be blank when present" }
+    }
+}
+
+data class NewsItemExtraction(val items: List<NewsItem>, val usage: ExtractionUsage? = null)
+
+data class ExtractionUsage(
+    val inputTokens: Long? = null,
+    val outputTokens: Long? = null,
+    val estimatedCostUsd: BigDecimal? = null,
+) {
+    init {
+        require(inputTokens == null || inputTokens >= 0) { "inputTokens must not be negative" }
+        require(outputTokens == null || outputTokens >= 0) { "outputTokens must not be negative" }
+        require(estimatedCostUsd == null || estimatedCostUsd >= BigDecimal.ZERO) {
+            "estimatedCostUsd must not be negative"
+        }
     }
 }

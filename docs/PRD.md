@@ -13,6 +13,10 @@ the meaningful information into typed units, and assembles a templated report.
   company/sector news).
 - **Discover** articles deterministically from free sources (Google News RSS /
   GDELT + a curated RSS list; PoC: a static curated corpus).
+- **Fetch publisher-page text** for each live news candidate before extraction.
+  A headline or RSS teaser alone is not an eligible `Article`; skip candidates
+  when publisher text cannot be retrieved or extracted. Full article text also
+  supports more accurate summaries in future versions.
 - **Extract** each article into typed `NewsItem`s via an LLM with structured
   output.
 - Convert articles into typed units of information that fill the report via a
@@ -107,14 +111,18 @@ Ollama, OpenRouter, etc. are swappable. Extraction uses LangChain4j
 
 ## 11. Evaluation & improvement loop
 
-- **Gold set**: a per-article `gold/<id>.json` listing expected `NewsItem`s and
-  expected snapshot facts, manually labeled.
+- **Gold set**: per-article `gold/<id>.json` files with manually labeled
+  expected `NewsItem`s. Snapshot values are market-data adapter outputs, not LLM
+  extraction results; verify them with recorded market-data fixtures instead of
+  including them in the extraction eval.
 - Metrics:
   - **accuracy** — field-level precision/recall vs gold.
   - **unsupported claims** — share of assertions whose cited source actually
     supports them (LLM-as-judge + manual sample).
   - **missing values** — recall of expected-but-omitted items.
-  - **cost** — LLM spend per report and per `NewsItem`.
+  - **cost** — estimated LLM spend per report and per `NewsItem`, based on
+    reported token counts and configured token rates. Report cost as unavailable
+    when usage or rates are missing; do not substitute zero.
 - Output: a **versioned eval report** (JSON + Markdown).
 - Loop: measure → root-cause → change → re-measure.
 

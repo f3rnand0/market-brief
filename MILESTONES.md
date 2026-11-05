@@ -138,22 +138,29 @@ does not stop the schedule.
 **Learn**: scheduled jobs, injecting a `Clock` for testability, timezone
 handling.
 
-## M7 — Eval harness (in progress)
+## M7 — Eval harness ✅
 
 Measure extraction quality (PRD §11, ARCHITECTURE.md §6).
 
-- **Implemented**: eight gold files with expected `NewsItem`s; `RunEval`,
-  `JsonEvalStore`, and `POST /eval/run` / `GET /eval/{id}` are wired.
-- **Remaining**: add eval tests; include expected snapshot facts; validate metric
-  calculations; measure cost instead of returning `0.0`; strengthen citation
-  evaluation beyond checking quote presence; add an `EvalStore` test fake; run
-  the gold cases against their packaged corpus articles. The production
-  RSS/GDELT article IDs do not match the gold IDs, so the current eval endpoint
-  can score an empty set and report perfect ratios.
+- **Implemented**: 32 Gold files with 32 expected `NewsItem`s across 21
+  type/region combinations. `RunEval` uses
+  the packaged corpus source and fails if a Gold set Article is missing. Exact
+  matching is one-to-one; field matching maximizes matching fields across
+  one-to-one pairs with shared subjects. Citation checks verify quote presence
+  and use a LangChain4j support judge; the Markdown report includes a five-item
+  manual review sample. Token usage and estimated cost per report and per
+  `NewsItem` are reported when token rates are configured. An in-memory
+  `EvalStore`, JSON/Markdown round-trip tests, route tests, and deterministic
+  metric tests are included.
+- **Known limits**: cost is estimated from
+  configured per-million-token rates. The judge uses the extraction model, and
+  its manual sample requires human review. Snapshot fixture checks belong to
+  the market-data adapter tests, not `RunEval`.
 
-**Done when**: tests prove known metrics for deterministic extraction, a planted
-quote absent from the article fails verification, and the documented eval
-metrics are implemented rather than placeholders.
+**Done when**: tests prove known metrics for deterministic extraction, duplicate
+predictions cannot inflate matches, a planted quote absent from the Article
+fails verification, and the documented eval metrics are implemented rather
+than placeholders. **Done** — `./gradlew build` passes.
 **Learn**: precision/recall metrics, eval design, "don't mark your own
 homework" verification.
 
@@ -164,10 +171,12 @@ policy.
 
 - **Implemented**: `RssNewsSource` and `GdeltNewsSource` are wired through
   `CompositeNewsSource`, which deduplicates URLs and sorts by publication date.
-- **Remaining**: fixture-backed feed tests and live smoke run; regional ranking
-  by publication date, per-outlet and per-region caps, event-key deduplication,
-  and a corpus test for stable selection and `GLOBAL` exclusion. Feed failures
-  currently become empty results and need an explicit operational policy.
+- **Implemented**: regional items rank by Article publication date, with a
+  two-item per-outlet and five-item per-region cap. Event-key deduplication uses
+  normalized type, region, and subjects; `GLOBAL` items stay out of regional
+  sections. A stable 32-Article corpus test covers selection and coverage.
+- **Remaining**: fixture-backed feed tests, live smoke run, and an explicit
+  operational policy for feed failures, which currently become empty results.
 
 **Done when**: feed fixtures and live smoke verification pass, and report
 selection applies the documented regional policy with tests.

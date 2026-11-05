@@ -114,8 +114,9 @@ requested set.
   regional sections. The summary section also carries `otherNews` for GLOBAL
   `MACRO` and `MARKET_MOVE` items that belong to no continent.
 
-**`Article`** is the input aggregate: headline, body, `outlet`, URL, publication
-date.
+**`Article`** is the input aggregate: headline, publisher-page text in `body`,
+`outlet`, URL, and publication date. A headline or RSS teaser alone is not an
+eligible live `Article`.
 
 ### 2.2 Two kinds of numbers
 
@@ -154,11 +155,12 @@ renders as "No major index moves." GLOBAL `MACRO` and `MARKET_MOVE` items are
 carried as `Report.otherNews` (the summary's "other important news") rather
 than dropped. A `COMPANY` or `SECTOR` item appears only in the company/sector
 section; it is never duplicated into the regional sections. Regional items are
-grouped in extraction order; ranking, per-outlet and per-region caps, and
-event-key deduplication are not implemented. Company/sector items are balanced
-round-robin across US, China, and a combined Global bucket, up to ten items.
-`GLOBAL` non-company/sector items are excluded from regional sections and remain
-in `otherNews`.
+ranked by Article publication date (newest first), with outlet and Article ID
+tie-breakers. Each region includes at most five items and at most two from one
+outlet; duplicate events are removed using normalized type, region, and sorted
+subjects. `GLOBAL` non-company/sector items are excluded from regional sections
+and remain in `otherNews`. Company/sector items are balanced round-robin across
+US, China, and a combined Global bucket, up to ten items.
 
 ### 2.5 Ports (interfaces owned by the domain)
 
@@ -175,7 +177,11 @@ interface NewsSource {                     // free news ingestion
 }
 
 interface NewsItemExtractor {              // the LLM seam (LangChain4j)
-    suspend fun extract(article: Article): List<NewsItem>
+    suspend fun extract(article: Article): NewsItemExtraction
+}
+
+interface ClaimSupportJudge {                // citation-support evaluation
+    suspend fun judge(item: NewsItem): ClaimSupportJudgment
 }
 
 interface ReportStore {                    // persist / load reports
@@ -194,13 +200,14 @@ listed separately from production wiring:
 
 - `MarketDataFetcher`: `CompositeMarketDataFetcher` (Yahoo primary, CNBC
   fixed-income fallback); `FakeMarketDataFetcher` in tests.
-- `NewsSource`: production wraps `RssNewsSource` and `GdeltNewsSource` in
-  `CompositeNewsSource`; `JsonCorpusNewsSource` is available but not wired.
-  Tests use static corpus fakes.
+- `NewsSource`: report generation uses `RssNewsSource` and `GdeltNewsSource` in
+  `CompositeNewsSource`; evaluation uses `JsonCorpusNewsSource` so Gold IDs
+  resolve to their packaged Article text. Tests use static corpus fakes.
 - `NewsItemExtractor`: `LangChain4jNewsItemExtractor`;
   `DeterministicNewsItemExtractor` in tests.
+- `ClaimSupportJudge`: `LangChain4jClaimSupportJudge`; deterministic fake in tests.
 - `ReportStore`: `JsonReportStore`; `InMemoryReportStore` in tests.
-- `EvalStore`: `JsonEvalStore` only; no test fake currently exists.
+- `EvalStore`: `JsonEvalStore`; `InMemoryEvalStore` in tests.
 
 `QuoteFetcher` is the adapters-internal seam: `YahooQuoteFetcher` and
 `CnbcQuoteFetcher` implement it; only the composite implements the domain port.
@@ -226,9 +233,11 @@ Use cases orchestrate the ports and domain services.
   4. Section assembly → `Report`.
   5. `ReportStore.save(...)`.
 - **`RunEval`** — filters fetched articles to gold-set IDs, runs extraction,
-  computes exact and field-level item metrics, checks that cited quote strings
-  occur in the article, and saves a versioned eval report (see §6). Evaluation
-  is sequential.
+  computes exact and field-level item metrics, checks quote presence, judges
+  citation support, and saves a versioned eval report (see §6). Evaluation is
+  sequential. The composition root supplies `JsonCorpusNewsSource` so eval uses
+  the packaged Articles referenced by the Gold set, not the live RSS/GDELT
+  source. `RunEval` fails if no Gold set Articles match or if any are missing.
 
 Each use case keeps its orchestration behind one method (`generate()`, `run()`).
 `GenerateDailyReport` is tested through in-memory port fakes.
@@ -262,19 +271,24 @@ Concrete adapters implementing the domain ports.
   malformed element does not discard the batch. The composite records
   unresolved instruments in `Snapshot.missing` and logs the gap.
 - **`RssNewsSource` / `GdeltNewsSource`** — the live news sources wired through
-  `CompositeNewsSource`. RSS currently uses Google News, Reuters, and BBC feeds;
-  GDELT uses its document API. Each source filters to the requested publication
-  date. The composite removes duplicate URLs and sorts by publication date and
-  id. `NewsSource.fetch` is synchronous; these adapters use `runBlocking` for
-  their HTTP calls. Fetch and parse failures are converted to empty results, so
-  a source outage can look like no articles. `JsonCorpusNewsSource` and the
-  packaged corpus remain available but are not wired in production.
+  `CompositeNewsSource`. RSS uses BBC, Guardian, CNBC, and MercoPress feeds; GDELT uses
+  its document API. Both fetch publisher-page text before constructing an
+  `Article`. `PublisherArticleTextFetcher` selects known publisher body
+  containers or `article` / `main` content and requires at least 80 words. It rejects non-HTTP URLs and
+  `news.google.com` redirect URLs. A failed request or page without enough
+  article text skips that candidate. The word-count floor filters headlines and
+  short teasers; it does not prove that the full story was extracted. Feed
+  failures are logged and converted to empty results, so an outage can look like
+  no articles. `NewsSource.fetch` is synchronous; these adapters use
+  `runBlocking` for HTTP calls. `JsonCorpusNewsSource` remains available for
+  eval and is not wired into production report generation.
 - **`LangChain4jNewsItemExtractor`** — the LLM adapter. Uses a single
   **OpenAI-compatible** chat model so DeepSeek, Kimi, Ollama, OpenRouter, etc.
   are swappable (ADR-0003); `baseUrl` and `model` come from
   `config/application.yml`, the API key from 1Password via `op run`, and both
   reach the adapter as an `OpenAiCompatibleConfig`. It asks the model for
-  structured JSON and maps it to typed `NewsItem`s. Requests use
+  structured JSON and maps it to typed `NewsItem`s. It returns token usage and
+  an estimated cost when configured token rates are available. Requests use
   LangChain4j's `chatAsync`, so the port suspends instead of parking a thread.
   The adapter requests OpenAI JSON-object mode with the item shape described in
   its prompt and parses the answer with kotlinx.serialization — the wire
@@ -284,11 +298,17 @@ Concrete adapters implementing the domain ports.
   raw structured output → `NewsItem` mapping is the adapter's internal seam:
   candidates that fail the citation invariant (§2.3) or any other domain
   invariant are dropped and counted (`droppedCandidateCount`) here, so only
-  valid `NewsItem`s cross the port. Provider and transport failures — including
+  valid `NewsItem`s cross the port. The port returns these items with token
+  usage metadata for eval cost estimates. Provider and transport failures — including
   authentication, missing model, rate limiting, server errors, and unreachable
   endpoints — propagate so a broken configuration or outage fails the run
   loudly. Only content-level failures, such as empty or malformed model output,
   are isolated per article.
+- **`LangChain4jClaimSupportJudge`** — checks whether the exact `Source` quote
+  spans support a `NewsItem` assertion. It uses the configured OpenAI-compatible
+  model and returns `SUPPORTED`, `UNSUPPORTED`, or `INDETERMINATE`. Missing quote
+  spans are caught independently before calling the judge. The eval Markdown
+  report includes a deterministic sample for manual review.
 - **`JsonReportStore` / `JsonEvalStore`** — persist reports and eval results
   as JSON snapshots to disk (no DB in v1). The report store writes the shared
   wire representation (see §5), so the persisted file and the HTTP response are
@@ -323,24 +343,33 @@ report returns `404` with a JSON error.
 
 ## 6. Evaluation pipeline
 
-The current gold set has expected `NewsItem`s for eight packaged corpus articles;
-it does not contain expected snapshot facts. `RunEval` computes exact item
-precision/recall, field-level precision/recall, quote-presence rate
-(`unsupportedClaims`), and missing-item rate. Quote verification checks literal
-presence in an article's headline or body; it does not judge whether a quote
-semantically supports the assertion. It does not depend on the extractor's
-dropped-candidate count.
+The current Gold set has expected `NewsItem`s for 32 packaged Articles.
+Snapshot values are tested separately with recorded market-data fixtures; they
+are not inputs to `RunEval`. `RunEval` computes exact item precision/recall,
+field-level precision/recall, citation quote presence, semantic citation
+support, missing-item rate, token usage, and estimated cost. Exact item matches
+are one-to-one. Field-level matches use a maximum-weight one-to-one assignment
+among pairs with at least one shared subject. A zero denominator produces
+`0.0`, not a perfect score.
 
-The production `NewsSource` is the live RSS/GDELT composite, whose article IDs do
-not match the packaged corpus IDs used by the gold set. Since `RunEval` filters
-fetched articles by those IDs, the wired `/eval/run` can receive no cases and
-report perfect ratios for empty denominators. The evaluation path must use the
-matching packaged articles before its results are meaningful.
+`RunEval` checks every `Source` quote for literal presence in the Article's
+headline or body. It marks missing quotes as unsupported without asking the
+judge. For present quotes, `LangChain4jClaimSupportJudge` returns a support
+verdict; an unreadable verdict is indeterminate. The Markdown report includes
+up to five deterministic citation decisions for manual review. The judge uses
+the configured extraction model, so the sample remains important.
 
-Cost is a placeholder (`0.0`), not measured LLM spend. Snapshot facts are not
-included in the gold set, and metric calculations do not yet have dedicated
-tests. `JsonEvalStore` writes versioned JSON and Markdown files; the HTTP API
-exposes the JSON report.
+Input and output token rates in `config/application.yml` produce estimated cost
+in USD. If usage or rates are unavailable, the report sets `cost.available` to
+`0.0` and omits the cost amounts.
+
+`RunEval` tests cover known metric values, one-to-one matching, empty and partial
+Gold set inputs, citation support, and cost aggregation. Snapshot adapter tests
+compare all 24 instrument quotes to the recorded 2026-10-28 snapshot fixture.
+The eval store has a JSON/Markdown round-trip test and an in-memory test fake;
+the HTTP routes have run, retrieval, not-found, and not-configured tests.
+`JsonEvalStore` writes versioned JSON and Markdown files; the HTTP API exposes
+the JSON report.
 
 ---
 

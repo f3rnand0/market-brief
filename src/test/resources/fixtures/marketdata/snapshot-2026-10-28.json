@@ -1,0 +1,30 @@
+{
+  "date": "2026-10-28",
+  "quotes": [
+    {"instrument": "S&P 500", "value": "6912.50", "change": "42.25", "changePercent": "0.61"},
+    {"instrument": "Nasdaq Composite", "value": "23950.75", "change": "-169.25", "changePercent": "-0.70"},
+    {"instrument": "STOXX Europe 600", "value": "578.30", "change": "4.20", "changePercent": "0.73"},
+    {"instrument": "FTSE 100", "value": "9420.60", "change": "35.40", "changePercent": "0.38"},
+    {"instrument": "DAX 40", "value": "24310.40", "change": "134.50", "changePercent": "0.56"},
+    {"instrument": "Nikkei 225", "value": "50120.30", "change": "440.30", "changePercent": "0.89"},
+    {"instrument": "Shanghai Composite", "value": "3985.20", "change": "25.10", "changePercent": "0.63"},
+    {"instrument": "Hang Seng", "value": "26480.50", "change": "284.70", "changePercent": "1.09"},
+    {"instrument": "US 10Y", "value": "4.995", "change": "0.009", "changePercent": "0.18"},
+    {"instrument": "Germany 10Y", "value": "3.3585", "change": "0.0031", "changePercent": "0.09"},
+    {"instrument": "France 10Y", "value": "4.9236", "change": "0.0157", "changePercent": "0.32"},
+    {"instrument": "UK 10Y", "value": "5.3496", "change": "0.0070", "changePercent": "0.13"},
+    {"instrument": "Japan 10Y", "value": "2.819", "change": "0.031", "changePercent": "1.11"},
+    {"instrument": "China 10Y", "value": "1.633", "change": "0.000", "changePercent": "0.00"},
+    {"instrument": "EUR/USD", "value": "1.1642", "change": "0.0032", "changePercent": "0.28"},
+    {"instrument": "USD/CNY", "value": "7.1180", "change": "-0.0070", "changePercent": "-0.10"},
+    {"instrument": "VIX", "value": "16.85", "change": "-0.57", "changePercent": "-3.27"},
+    {"instrument": "Gold", "value": "4125.80", "change": "27.40", "changePercent": "0.67"},
+    {"instrument": "Silver", "value": "49.35", "change": "0.45", "changePercent": "0.92"},
+    {"instrument": "Copper", "value": "5.12", "change": "0.04", "changePercent": "0.79"},
+    {"instrument": "Brent", "value": "66.40", "change": "0.45", "changePercent": "0.68"},
+    {"instrument": "WTI", "value": "62.15", "change": "0.35", "changePercent": "0.57"},
+    {"instrument": "Bitcoin", "value": "112450.00", "change": "1650.00", "changePercent": "1.49"},
+    {"instrument": "Ethereum", "value": "4085.50", "change": "-35.25", "changePercent": "-0.86"}
+  ],
+  "missing": []
+}

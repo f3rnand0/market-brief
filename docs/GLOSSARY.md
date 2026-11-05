@@ -48,8 +48,8 @@ _Avoid_: statement, summary
 **Source**:
 The mandatory citation attached to a NewsItem: one article id and one or more
 quote spans intended to support the assertion. The domain checks that the
-citation is non-empty; evaluation currently checks only that each quote occurs
-in the article text.
+citation is non-empty. Evaluation checks quote presence and uses a judge for
+semantic support; a manual sample is included in the Eval report.
 _Avoid_: provenance, reference
 
 **Outlet**:
@@ -57,7 +57,9 @@ The organization that published an article (Reuters, SCMP, …).
 _Avoid_: source (reserved for the NewsItem citation)
 
 **Article**:
-A single news piece: headline, body, outlet, URL, and publication date.
+A single news piece: headline, article text in `body`, outlet, URL, and
+publication date. For live news, `body` must contain text extracted from the
+publisher page; a headline or RSS teaser alone is not an Article for extraction.
 
 **Region**:
 A continent tag on a NewsItem: US, China, Europe, Latam, Asia, or Global.
@@ -72,9 +74,24 @@ be source-backed.
 _Avoid_: value, figure
 
 **Gold set**:
-The manually labeled ground truth used to score extraction. The current set
-contains expected NewsItems for eight articles; expected snapshot facts are not
-yet represented.
+The manually labeled ground truth used to score extraction. It contains
+expected NewsItems for each Article. Snapshot values are tested at the
+market-data adapter, not as LLM extraction output.
+
+**Extraction usage**:
+Token counts and estimated cost for one LLM call, when token counts and
+configured rates are available. Extraction usage is recorded once per Article
+extraction call, regardless of how many NewsItems it returns; claim-support
+judgment calls also contribute to Eval usage totals. The Eval report's
+per-NewsItem cost is the aggregate estimated cost divided by predicted
+NewsItems.
+
+**Claim support**:
+The judge result for whether a Source supports a NewsItem assertion: supported,
+unsupported, or indeterminate.
+
+**Eval report**:
+A versioned record of extraction metrics, stored as JSON and Markdown.
 
 **Previous day**:
 The calendar day before the report date; the report is generated on the
