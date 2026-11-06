@@ -32,7 +32,7 @@ PORT=9000 ./gradlew run
 ```
 
 The server wires BBC, Guardian, CNBC, and MercoPress RSS feeds, GDELT, the Yahoo/CNBC
-market-data adapters, and the configured LLM extractor. The packaged static
+market-data adapters, and the configured OpenCode-compatible LLM extractor. The packaged static
 corpus is available for tests but is not used by the running server. Generate
 and read a report:
 
@@ -71,9 +71,12 @@ the report-selection behavior.
 Non-sensitive runtime settings for the extractor live in
 [`config/application.yml`](config/application.yml): the provider `baseUrl` and
 `model`, the environment variable holding the API key (`apiKeyEnv`), the request
-timeout, and the retry count. Point `MARKET_BRIEF_CONFIG` at another file to
-override the location; the LLM section selects any OpenAI-compatible provider.
-The `run` server validates startup configuration and serves the report endpoints.
+timeout, and the retry count. The default endpoint is OpenCode Go's
+OpenAI-compatible Chat Completions API, using `deepseek-v4.1-flash` and
+`OPENCODE_API_KEY`. Point `MARKET_BRIEF_CONFIG` at another file to override the
+location. Both news extraction and claim-support evaluation use the same
+configured model and key. The `run` server validates startup configuration and
+serves the report endpoints.
 
 The API key is a secret and never lives in the repository. It is injected from
 1Password at runtime:
@@ -85,7 +88,8 @@ op run --env-file=config/secrets.env -- ./gradlew run
 
 `config/secrets.env` holds only 1Password references (`op://vault/item/field`),
 not the secret itself, and is gitignored. Any other injection mechanism works
-too — the app reads whatever variable `llm.apiKeyEnv` names.
+too — the app reads the variable named by `llm.apiKeyEnv` (default
+`OPENCODE_API_KEY`).
 
 Manual verification against the configured provider (opt-in live test):
 
@@ -128,6 +132,23 @@ Run the complete local quality gate with:
 ./gradlew check
 ```
 
-Every push to `main` runs `./gradlew build` in GitHub Actions. The normal
-quality workflow does not call external LLM services. The credentialed live
-test is local-only and requires the configured credentials described above.
+The `Quality` GitHub Actions workflow runs `./gradlew build` for pull requests
+targeting `main` and pushes to `main`. This includes tests and ktlint and does
+not call external LLM services. To require it before merging, configure the
+repository's `main` branch protection or ruleset to require the `verify` check
+from the `Quality` workflow.
+
+To run ktlint automatically when creating a merge commit, enable the tracked
+Git hook once per clone:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+Git does not copy local hook configuration when cloning. The hook runs
+`./gradlew ktlintCheck`; CI remains the shared quality gate. Live tests are
+opt-in and require the configured OpenCode credential:
+
+```bash
+op run --env-file=config/secrets.env -- ./gradlew liveTest
+```
