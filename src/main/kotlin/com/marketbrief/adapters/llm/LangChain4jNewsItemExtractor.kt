@@ -34,7 +34,6 @@ class LangChain4jNewsItemExtractor(
 
     private val droppedCandidates = AtomicLong()
 
-    /** Candidates rejected by the mapping seam since this adapter was created. */
     val droppedCandidateCount: Long
         get() = droppedCandidates.get()
 

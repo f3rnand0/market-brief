@@ -51,11 +51,13 @@ step the agent takes.
 
 ## Comments
 
-Comments must preserve information the code cannot express: a non-obvious
-constraint, rationale, or gotcha. KDoc is justified for a caller-visible
-contract that the signature cannot express, such as failure semantics. Do not
-paraphrase names, narrate implementation steps, or repeat the docs above.
+Do not add comments or KDoc by default. Names, types, and code should explain
+what the code does.
 
-Before finishing, review every comment you added or touched and delete any that
-fail this test. Prefer a clearer name or assertion when code can carry the
-intent.
+Add a comment only when it conveys information that cannot be made clear through
+a better name, type, or code structure, such as a non-obvious constraint,
+rationale, gotcha, or caller-visible contract.
+
+Do not explain what a variable, property, method, or class does when its name
+and implementation make that clear. Before finishing, review every comment you
+added or touched and remove any that does not meet this standard.
