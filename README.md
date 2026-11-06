@@ -4,12 +4,6 @@ A Kotlin service that generates a daily summary of the most important global
 investment-market news — index moves, an asset-class snapshot, and regional and
 company/sector news — from free web sources and market data.
 
-## Stack
-
-- Kotlin 2.4 / JVM 25
-- Gradle 9 (Kotlin DSL, wrapper included)
-- Ktor 3 (Netty server + HTTP client) + kotlinx.serialization
-
 ## Requirements
 
 - JDK 25 (Temurin recommended) — the Gradle wrapper handles the rest.
@@ -19,6 +13,10 @@ See [`docs/PRD.md`](docs/PRD.md) for the product spec,
 [`docs/GLOSSARY.md`](docs/GLOSSARY.md) for domain vocabulary.
 
 ## Run
+
+Set the API key variable named by `llm.apiKeyEnv` in
+[`config/application.yml`](config/application.yml) before starting the server;
+see [Configuration](#configuration).
 
 ```bash
 ./gradlew run
@@ -31,10 +29,9 @@ See [`docs/PRD.md`](docs/PRD.md) for the product spec,
 PORT=9000 ./gradlew run
 ```
 
-The server wires BBC, Guardian, CNBC, and MercoPress RSS feeds, GDELT, the Yahoo/CNBC
-market-data adapters, and the configured OpenCode-compatible LLM extractor. The packaged static
-corpus is available for tests but is not used by the running server. Generate
-and read a report:
+The server reads configured RSS feeds and GDELT, fetches market data, and uses
+the configured LLM provider. The packaged corpus is used for evaluation, not
+live report generation. Generate and retrieve a report:
 
 ```bash
 curl -X POST http://localhost:8080/report/generate
@@ -43,40 +40,26 @@ curl http://localhost:8080/report/2026-10-28
 curl http://localhost:8080/report/2026-10-28.html
 ```
 
-`POST /report/generate` uses the current report date; its news window is the
-previous calendar day. The server also runs the pipeline automatically every
-day at 09:00 Europe/Berlin (CET/CEST aware); the endpoint stays available for
-on-demand runs. Reports are persisted as JSON snapshots;
-`storage.reportsDir` in `config/application.yml` selects the directory (default
-`data/reports`). The generated JSON file is named `<date>.json` (for example,
-`data/reports/2026-10-28.json`). The HTML report is rendered from that saved
-report when the `.html` endpoint is requested; it is returned in the HTTP
-response and is not stored as a separate HTML file. Open the HTML URL in a
-browser to view the formatted report, or save it locally:
+The endpoint uses the current report date and covers the previous calendar day.
+The scheduler also runs daily at 09:00 Europe/Berlin. JSON reports are saved
+under `storage.reportsDir` (default `data/reports`) as `<date>.json`; the HTML
+endpoint renders the saved report in its response. To save the HTML locally:
 
 ```bash
 curl http://localhost:8080/report/2026-10-28.html \
   --output 2026-10-28.html
 ```
 
-Regional news is ranked by Article publication date with a two-item per-outlet
-and five-item per-region cap; duplicate events and GLOBAL items are excluded
-from regional sections. Feed outages are tolerated when another feed or source
-succeeds, and fail report generation when all configured news sources are down.
-See [the architecture guide](docs/ARCHITECTURE.md#24-section-assembly-rules) for
-the report-selection behavior.
+See [the architecture guide](docs/ARCHITECTURE.md#24-section-assembly-rules)
+for report selection and source-failure behavior.
 
 ## Configuration
 
-Non-sensitive runtime settings for the extractor live in
-[`config/application.yml`](config/application.yml): the provider `baseUrl` and
-`model`, the environment variable holding the API key (`apiKeyEnv`), the request
-timeout, and the retry count. The default endpoint is OpenCode Go's
-OpenAI-compatible Chat Completions API, using `deepseek-v4.1-flash` and
-`OPENCODE_API_KEY`. Point `MARKET_BRIEF_CONFIG` at another file to override the
-location. Both news extraction and claim-support evaluation use the same
-configured model and key. The `run` server validates startup configuration and
-serves the report endpoints.
+Runtime settings for the LLM live in
+[`config/application.yml`](config/application.yml). Set
+`MARKET_BRIEF_CONFIG` to load a different file. Report extraction and citation
+evaluation use the same configured model. The server validates its LLM
+configuration at startup.
 
 The API key is a secret and never lives in the repository. It is injected from
 1Password at runtime:
@@ -86,16 +69,9 @@ cp config/secrets.env.example config/secrets.env   # then edit the op:// referen
 op run --env-file=config/secrets.env -- ./gradlew run
 ```
 
-`config/secrets.env` holds only 1Password references (`op://vault/item/field`),
-not the secret itself, and is gitignored. Any other injection mechanism works
-too — the app reads the variable named by `llm.apiKeyEnv` (default
-`OPENCODE_API_KEY`).
-
-Manual verification against the configured provider (opt-in live test):
-
-```bash
-op run --env-file=config/secrets.env -- ./gradlew liveTest
-```
+`config/secrets.env` holds only 1Password references (`op://vault/item/field`)
+and is gitignored. Other secret injectors can set the environment variable
+named by `llm.apiKeyEnv`.
 
 ## Test
 
@@ -110,45 +86,19 @@ excluded from `test` and `build`. Run them explicitly with credentials:
 op run --env-file=config/secrets.env -- ./gradlew liveTest
 ```
 
-## Lint
+## Checks
 
-`ktlint` runs as part of `./gradlew build` — a style violation fails the
-build. To check or fix without a full build:
-
-```bash
-./gradlew ktlintCheck
-./gradlew ktlintFormat
-```
-
-Style is configured in [`.editorconfig`](.editorconfig).
-
-## Quality checks
-
-The Kotlin compiler treats warnings as errors. This catches compiler-level
-issues, including unsafe or deprecated code, while Ktlint enforces formatting.
-Run the complete local quality gate with:
+Run the local quality checks with:
 
 ```bash
 ./gradlew check
 ```
 
-The `Quality` GitHub Actions workflow runs `./gradlew build` for pull requests
-targeting `main` and pushes to `main`. This includes tests and ktlint and does
-not call external LLM services. To require it before merging, configure the
-repository's `main` branch protection or ruleset to require the `verify` check
-from the `Quality` workflow.
-
-To run ktlint automatically when creating a merge commit, enable the tracked
-Git hook once per clone:
+The tracked Git hook can run ktlint when creating a merge commit. Enable it once
+per clone:
 
 ```bash
 git config core.hooksPath .githooks
 ```
 
-Git does not copy local hook configuration when cloning. The hook runs
-`./gradlew ktlintCheck`; CI remains the shared quality gate. Live tests are
-opt-in and require the configured OpenCode credential:
-
-```bash
-op run --env-file=config/secrets.env -- ./gradlew liveTest
-```
+The hook runs `./gradlew ktlintCheck`.

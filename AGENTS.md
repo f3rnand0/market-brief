@@ -2,10 +2,10 @@
 
 ## Documents
 
-- `docs/PRD.md` — product goals and constraints.
-- `docs/ARCHITECTURE.md` — implemented layers, ports, and runtime behavior;
-  follow it for code changes.
-- `docs/GLOSSARY.md` — canonical domain vocabulary. Use its terms in code.
+- Read `docs/PRD.md` for product goals and constraints.
+- For code changes, read `docs/ARCHITECTURE.md` for current layers, ports, and
+  runtime behavior.
+- Use `docs/GLOSSARY.md` as the canonical domain vocabulary in code and docs.
 
 Keep current behavior distinct from product goals and unfinished work. When a
 change alters what a doc describes, update that doc.
@@ -41,23 +41,20 @@ The couplings no config file confesses:
 
 ## Naming
 
-Class and interface names are noun phrases. A collaborator that performs an
-action takes an agent noun — `MarketDataFetcher`, `JsonReportStore`,
-`RssNewsSource` — and the verb belongs to its method: `snapshot()`, `fetch()`,
-`extract()`. Use cases are the one imperative: `GenerateDailyReport` names the
-step the agent takes.
+Name classes and interfaces with noun phrases. Name collaborators with agent
+nouns — `MarketDataFetcher`, `JsonReportStore`, `RssNewsSource` — and put the
+action in their methods: `snapshot()`, `fetch()`, `extract()`. Name use cases
+with the action they perform, such as `GenerateDailyReport`.
 
 `*Data` names a record (a Kotlin `data class`), not a collaborator.
 
 ## Comments
 
-Do not add comments or KDoc by default. Names, types, and code should explain
-what the code does.
+Use comments to preserve information the code cannot express, such as a
+non-obvious constraint, rationale, or gotcha. Use KDoc for caller-visible
+contracts the signature cannot express, such as failure semantics. Keep names,
+types, and structure responsible for explaining ordinary behavior.
 
-Add a comment only when it conveys information that cannot be made clear through
-a better name, type, or code structure, such as a non-obvious constraint,
-rationale, gotcha, or caller-visible contract.
-
-Do not explain what a variable, property, method, or class does when its name
-and implementation make that clear. Before finishing, review every comment you
-added or touched and remove any that does not meet this standard.
+Before finishing, review every comment you added or touched and delete any that
+fail this test. Prefer a clearer name or assertion when code can carry the
+intent.

@@ -2,35 +2,30 @@
 
 ## 1. Problem & purpose
 
-Investors need one short, daily read of what mattered in global investment
-markets over the previous day. This service produces that summary
-automatically: it gathers **free** news and market data from the web, extracts
-the meaningful information into typed units, and assembles a templated report.
+Investors need a concise daily account of global investment markets for the
+previous day. The service gathers news and market data from free sources,
+extracts cited news items, and assembles a structured report.
 
 ## 2. Goals
 
-- Produce a daily report with four sections (summary, snapshot, regional news,
-  company/sector news).
-- **Discover** articles deterministically from free sources (Google News RSS /
-  GDELT + a curated RSS list; PoC: a static curated corpus).
+- Produce a daily report with a summary, market snapshot, regional news, and
+  company and sector news.
+- **Discover** articles deterministically from RSS feeds and GDELT; the
+  evaluation pipeline uses a fixed, packaged corpus.
 - **Fetch publisher-page text** for each live news candidate before extraction.
   A headline or RSS teaser alone is not an eligible `Article`; skip candidates
-  when publisher text cannot be retrieved or extracted. Full article text also
-  supports more accurate summaries in future versions.
+  when publisher text cannot be retrieved or extracted.
 - **Extract** each article into typed `NewsItem`s via an LLM with structured
   output.
-- Convert articles into typed units of information that fill the report via a
-  template.
-- Measure extraction quality (accuracy, unsupported claims, missing values)
-  against a fixed dataset and evals, root-cause issues, and improve
-  effectiveness, integrity, and completeness.
-- Use **free sources only** for data and news.
+- Measure extraction quality against a fixed labeled corpus; use the results to
+  improve accuracy, citation support, and completeness.
+- Use free sources for news and market data. LLM API usage may incur
+  pay-as-you-go costs.
 
 ## 3. Non-goals (v1)
 
-- No paid news/data subscriptions; no fixed-fee LLM subscriptions.
-  Pay-as-you-go open-model API usage (DeepSeek, Kimi, …) is in scope and
-  budgeted.
+- No paid news or market-data subscriptions. Pay-as-you-go LLM API usage is in
+  scope; fixed-fee LLM subscriptions are out of scope.
 - No real-time intraday updates — the report is a daily batch.
 - No multi-user auth — internal tool.
 - No database — JSON snapshots to disk.
@@ -57,25 +52,18 @@ polish.
    yield with the daily move in basis points and percent
    (`4.995 (+0.9 bp, +0.18%)`); other asset classes show the percentage change.
    Fully structured, sourced from the market-data API (no LLM).
-3. **Regional news** — the most relevant market news per continent: US, China,
+3. **Regional news** — the most relevant market news per region: US, China,
    Europe, Latam, Asia.
 4. **Company / sector news** — the most relevant news about the biggest
    companies and sectors, balanced across US / China / Global (not US-only).
    Each `NewsItem` appears in exactly one section: company and sector items
    are never duplicated into the regional sections.
 
-## 6. Domain model
+## 6. Information integrity
 
-See `GLOSSARY.md` for the canonical vocabulary. Highlights:
-
-- **`NewsItem`** is the extracted unit: `type` ∈ { MARKET_MOVE, COMPANY,
-  SECTOR, MACRO }, a `region` tag, `subjects`, an `assertion`, an optional
-  `direction`, optional `metrics`, and a mandatory `source` citation.
-- Two kinds of numbers, kept strictly separate: **snapshot numbers** (from the
-  API, authoritative, no citation needed) vs **`NewsItem.metrics`** (extracted
-  from prose, citation required).
-- A `MARKET_MOVE` carries an optional `cause` (free text) that must itself be
-  source-backed.
+Use [`GLOSSARY.md`](GLOSSARY.md) for canonical domain terms. Every extracted
+`NewsItem` needs article quotes supporting its assertion. Snapshot values come
+from market-data APIs; LLM extraction does not supply market numbers.
 
 ## 7. Instrument set (snapshot)
 
@@ -88,12 +76,8 @@ See `GLOSSARY.md` for the canonical vocabulary. Highlights:
 
 ## 8. Data sources (free only)
 
-- **Market data**: Yahoo Finance primary, with **per-instrument-type
-  fallbacks** (e.g. CNBC for non-US yields), behind a swappable `MarketDataFetcher` port that
-  can run **multiple sources concurrently**.
-- **News**: Google News RSS / GDELT as the coverage backbone, plus a curated
-  RSS list of free outlets. Current wiring and remaining ingestion work are
-  described in [`ARCHITECTURE.md`](ARCHITECTURE.md).
+- Use free market-data APIs and deterministic RSS/GDELT discovery. Current
+  source wiring is documented in [`ARCHITECTURE.md`](ARCHITECTURE.md).
 
 ## 9. Tech stack
 
@@ -102,17 +86,17 @@ abstraction (`baseUrl` + `model` + `apiKey` from env) so DeepSeek, Kimi,
 Ollama, OpenRouter, etc. are swappable. Extraction uses LangChain4j
 **structured output** → typed `NewsItem`s. HTML rendering via `kotlinx.html`.
 
-## 10. Scheduling & ops
+## 10. Schedule and persistence
 
 - Runs daily at **09:00 Europe/Berlin** (CET/CEST aware). The data window is
   the **previous calendar day**.
-- PoC: on-demand trigger endpoint; JSON snapshots of reports and evals to disk;
-  no DB.
+- Reports and evaluation results are stored as JSON files; no database is
+  required.
 
 ## 11. Evaluation & improvement loop
 
-- **Gold set**: per-article `gold/<id>.json` files with manually labeled
-  expected `NewsItem`s. Snapshot values are market-data adapter outputs, not LLM
+- **Gold set**: manually labeled expected `NewsItem`s for packaged Articles.
+  Snapshot values are market-data adapter outputs, not LLM
   extraction results; verify them with recorded market-data fixtures instead of
   including them in the extraction eval.
 - Metrics:
@@ -126,39 +110,10 @@ Ollama, OpenRouter, etc. are swappable. Extraction uses LangChain4j
 - Output: a **versioned eval report** (JSON + Markdown).
 - Loop: measure → root-cause → change → re-measure.
 
-Current eval behavior and gaps, including the mismatch between live article IDs
-and packaged gold IDs, are documented in [`ARCHITECTURE.md`](ARCHITECTURE.md).
+The evaluation inputs, metrics, and limitations are documented in
+[`ARCHITECTURE.md`](ARCHITECTURE.md).
 
-## 12. Upstream LangChain4j investigation (time-boxed spike)
+## 12. Out of scope
 
-Probe LangChain4j structured output and provider behaviour using the `NewsItem`
-shape (enums, lists, optional fields, citations, and divergence across
-DeepSeek / Kimi / open models).
-
-- **Exit criteria**: a minimal reproducer + documented observed-vs-expected +
-  an upstream issue/PR link, **or** a documented "no issue found" with the
-  probes that were run.
-- **Time-boxed**; must not block the main report work.
-
-## 13. Release plan
-
-These are intended release targets, not a description of current implementation.
-See [`ARCHITECTURE.md`](ARCHITECTURE.md) for current behavior.
-
-1. PoC — static corpus + market-data fetch + LLM extraction → JSON report →
-   HTML page.
-2. Eval harness + gold set → first eval report.
-3. Live web ingestion (free sources) + scheduled run.
-4. Upstream investigation spike (runs in parallel with 1–3).
-
-## 14. Out of scope (v1)
-
-Email delivery, multi-user, DB persistence, paid sources, intraday updates,
-AI-agent web browsing (open-ended discovery).
-
-## 15. To resolve during implementation
-
-- Exact curated RSS outlet list (including China and Latam outlets).
-- Exact per-instrument-type fallback mapping for market data — resolved for
-  v1: Yahoo Finance primary, CNBC for fixed-income yields.
-- Which judge model/approach scores "unsupported claims".
+Email delivery, multi-user, database persistence, paid news or market-data
+services, intraday updates, and AI-agent web browsing (open-ended discovery).

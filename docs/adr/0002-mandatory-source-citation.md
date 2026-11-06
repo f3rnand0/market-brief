@@ -1,15 +1,10 @@
 # Every NewsItem carries a mandatory source citation
 
-Each NewsItem must carry a `source`: the article id and quote span(s) that
-support its assertion. An assertion with no backing source is an extraction
-failure, not a valid output. This is what makes the "unsupported claims" eval
-dimension measurable. Consequence: extraction is stricter — prompts and parsing
-must produce citations, which adds friction in exchange for auditability.
+Each `NewsItem` carries a `source`: an Article ID and quote spans intended to
+support its assertion. An assertion without a citation is an extraction
+failure. Requiring citations makes unsupported claims measurable.
 
-Enforcement, per the accepted architecture (ARCHITECTURE.md §2.3): the
-invariant lives in the type — `NewsItem` cannot be constructed without a
-non-empty `source` (parse, don't validate). The extractor drops candidates that
-fail domain construction; only valid `NewsItem`s cross the `NewsItemExtractor`
-port. `RunEval` currently checks that each quoted span occurs in the article's
-headline or body, independently of the adapter's drop count. It does not assess
-whether the quote supports the assertion or compare it against a gold citation.
+The `NewsItem` type enforces citation shape, and the extractor drops candidates
+that fail construction. [`RunEval`](../ARCHITECTURE.md#6-evaluation-pipeline)
+checks quote presence and uses a judge to score semantic support. It does not
+compare citations against gold citations.

@@ -1,9 +1,9 @@
 # Discovery is deterministic; the LLM only extracts
 
-The report's inputs are **discovered** deterministically (Google News RSS /
-GDELT + a curated RSS list; a static corpus for the PoC) and **extracted** by
-an LLM. We deliberately do not use an AI agent to browse the open web for
-articles.
+The report's live inputs are **discovered** deterministically from configured
+RSS feeds and GDELT; the evaluation pipeline uses a packaged corpus. An LLM
+extracts NewsItems from those Articles. We do not use an AI agent to browse the
+open web for articles.
 
 Rationale: browsing is more expensive (token volume spent on discarded pages),
 non-deterministic (breaks the eval loop's reproducibility and auditability),
