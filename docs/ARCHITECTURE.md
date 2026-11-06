@@ -5,11 +5,11 @@ important global investment-market news** for the previous day. It gathers free
 news and market data, extracts the meaningful information into typed units
 (`NewsItem`s), and assembles a templated report (JSON + HTML).
 
-This document is the source of truth for the implemented architecture, including
-its rationale and current limitations. It follows a
-**Domain-Driven Design (DDD)** style with single-direction dependencies between
-layers. It is the code-level counterpart to [`PRD.md`](PRD.md) (the *what*) and
-[`GLOSSARY.md`](GLOSSARY.md) (the *vocabulary*).
+This document describes the implemented architecture and current limitations.
+Dependencies point inward: the domain owns
+business rules and ports, adapters implement those ports, and the composition
+root wires the application. The [PRD](PRD.md) states product requirements;
+the [glossary](GLOSSARY.md) defines domain terms.
 
 ---
 
@@ -43,7 +43,7 @@ or LLM providers.
 ┌──────────────────────────────────────────────────────────────┐
 │                     composition root                          │
 │  `CompositionRoot`: constructs and wires dependencies; `main` │
-│  starts the scheduler + Ktor. The ONLY wiring object that     │
+│  starts the scheduler + Ktor. The only wiring object that     │
 │  imports both application and adapters.                       │
 └──────────────────────────────────────────────────────────────┘
 ```
@@ -52,23 +52,20 @@ There is **no edge between application and adapters**. Use cases depend
 on domain ports; adapters implement them; the composition root connects the
 two. That is what keeps the dependency graph acyclic.
 
-Runtime configuration also belongs to the composition root: non-sensitive
-settings come from `config/application.yml` (path overridable with
-`MARKET_BRIEF_CONFIG`), while the LLM API key is injected as an environment
-variable by 1Password's `op run` — the variable is named in the YAML. Adapters
-never read the file or the environment themselves; they receive plain config
-objects.
+The composition root loads settings and secrets, then passes plain config
+objects to adapters. See [configuration](../README.md#configuration) for local
+setup and ADR-0003 for the provider boundary.
 
-| Layer          | Package                      | Depends on                |
-|----------------|------------------------------|---------------------------|
-| domain         | `com.marketbrief.domain`     | nothing (pure Kotlin)     |
-| application | `com.marketbrief.application` | domain + coroutines |
-| adapters | `com.marketbrief.adapters` | domain + report format + third-party libraries |
-| report format | `com.marketbrief.reportformat` | domain (shared serializable report shape) |
-| presentation | `com.marketbrief.http` | application + report format |
-| scheduling | `com.marketbrief.scheduling` | coroutines + `java.time` + SLF4J (no domain/app imports) |
-| configuration | `com.marketbrief.config` | kaml + kotlinx.serialization |
-| composition root | `com.marketbrief` | application + adapters + domain + http + scheduling + configuration + Ktor client |
+| Layer | Package | Depends on |
+| --- | --- | --- |
+| Domain | `com.marketbrief.domain` | None |
+| Application | `com.marketbrief.application` | Domain, coroutines |
+| Adapters | `com.marketbrief.adapters` | Domain, report format, external libraries |
+| Report format | `com.marketbrief.reportformat` | Domain |
+| Presentation | `com.marketbrief.http` | Application, report format |
+| Scheduling | `com.marketbrief.scheduling` | Coroutines, `java.time`, SLF4J |
+| Configuration | `com.marketbrief.config` | kaml, kotlinx.serialization |
+| Composition root | `com.marketbrief` | Application, adapters, domain, HTTP, scheduling, configuration, Ktor |
 
 ---
 
@@ -134,33 +131,24 @@ failure*, not a valid output — is enforced **at construction**: `NewsItem`
 cannot be created without a `source`. Construction checks citation shape, not
 whether its quote spans occur in the article or support the assertion.
 
-The mapping from raw LLM structured output to `NewsItem` — where invalid
-candidates are dropped and recorded — is an **internal seam of the extractor
-adapter** (§4), not an application-layer step. Callers of
-`NewsItemExtractor.extract(...)` receive only valid `NewsItem`s. This deepens
-the extractor seam: one method to learn, no ordering constraint, and the
-invariant holds for every current and future caller (pipeline, eval, tests).
+The extractor adapter maps raw LLM output to `NewsItem`, dropping and counting
+candidates that violate domain invariants. Callers receive only valid items;
+the application layer does not repeat this validation.
 
 ### 2.4 Section assembly rules
 
-Section assembly maps `NewsItem`s to the four report sections: regional grouping
-(US / China / Europe / Latam / Asia), the
-company/sector balance (US / China / Global, never US-only), and the summary.
-The summary's S&P 500 and Nasdaq Composite levels and moves come from the
-`Snapshot`; causes come from matching `MARKET_MOVE` items through the
-domain-owned index aliases (`ReportInstruments.summaryInstrumentFor`). One
-sentence per index. An index present in `Snapshot.missing` renders as
-`"<index>: data unavailable."`; a complete snapshot with no index quotes
-renders as "No major index moves." GLOBAL `MACRO` and `MARKET_MOVE` items are
-carried as `Report.otherNews` (the summary's "other important news") rather
-than dropped. A `COMPANY` or `SECTOR` item appears only in the company/sector
-section; it is never duplicated into the regional sections. Regional items are
-ranked by Article publication date (newest first), with outlet and Article ID
-tie-breakers. Each region includes at most five items and at most two from one
-outlet; duplicate events are removed using normalized type, region, and sorted
-subjects. `GLOBAL` non-company/sector items are excluded from regional sections
-and remain in `otherNews`. Company/sector items are balanced round-robin across
-US, China, and a combined Global bucket, up to ten items.
+Section assembly follows these rules:
+
+- The summary takes S&P 500 and Nasdaq Composite values from `Snapshot` and
+  causes from matching `MARKET_MOVE` items. Missing index data renders as
+  `"<index>: data unavailable."`; a complete snapshot without index quotes
+  renders "No major index moves.".
+- Global `MACRO` and `MARKET_MOVE` items go to `Report.otherNews`.
+- `COMPANY` and `SECTOR` items go only to the company/sector section. Items are
+  balanced round-robin across US, China, and Global, up to ten items.
+- Other regional items exclude Global and company/sector items. They are sorted
+  by publication date, then outlet and Article ID. Duplicate events are
+  removed; each region has a five-item limit and a two-item-per-outlet limit.
 
 ### 2.5 Ports (interfaces owned by the domain)
 
@@ -212,9 +200,8 @@ listed separately from production wiring:
 `QuoteFetcher` is the adapters-internal seam: `YahooQuoteFetcher` and
 `CnbcQuoteFetcher` implement it; only the composite implements the domain port.
 
-`NewsItemExtractor` is the most important seam: the LangChain4j adapter
-implements it, and the structured-output investigation targets it directly
-(see §7).
+The LangChain4j adapter implements `NewsItemExtractor`; the completed
+structured-output investigation is summarized in [the spike](spike-langchain4j.md).
 
 ---
 
@@ -239,9 +226,6 @@ Use cases orchestrate the ports and domain services.
   the packaged Articles referenced by the Gold set, not the live RSS/GDELT
   source. `RunEval` fails if no Gold set Articles match or if any are missing.
 
-Each use case keeps its orchestration behind one method (`generate()`, `run()`).
-`GenerateDailyReport` is tested through in-memory port fakes.
-
 `GenerateDailyReport.generate` is `suspend`: the `MarketDataFetcher` and
 `NewsItemExtractor` ports are suspending, and the HTTP layer calls the use case
 from its request coroutine. Concurrent calls for the same report date share one
@@ -249,8 +233,8 @@ in-flight run; the run is detached from the requesting coroutine, so a
 disconnected client cannot cancel work shared by another caller.
 
 A scheduler (wired in the composition root, not part of the use case) triggers
-`GenerateDailyReport` at 09:00 Europe/Berlin (CET/CEST aware); the PoC also
-exposes an on-demand trigger. `DailyReportScheduler` owns no business logic: it
+`GenerateDailyReport` at 09:00 Europe/Berlin (CET/CEST aware); an HTTP endpoint
+also supports on-demand runs. `DailyReportScheduler` owns no business logic: it
 takes the current instant from an injected `Clock`, sleeps until the next 09:00
 in the Berlin zone, runs the supplied action, and repeats. A failed run is
 logged and the schedule continues, so one provider outage does not silence the
@@ -264,51 +248,34 @@ Concrete adapters implementing the domain ports.
 
 - **`YahooQuoteFetcher` / `CnbcQuoteFetcher`** — implement the internal
   `QuoteFetcher` seam. `CompositeMarketDataFetcher` is the single
-  `MarketDataFetcher` adapter: Yahoo is primary, per-asset-class fallbacks (CNBC
-  for non-US yields) fill gaps, all sources are queried concurrently, and the
+  `MarketDataFetcher` adapter: Yahoo is primary, and the CNBC fixed-income
+  fallback fills gaps. Both sources are queried concurrently, and the
   primary wins when two sources cover the same instrument (ADR-0001). Requests
   are bounded at 15 seconds; CNBC decodes each quote independently so one
   malformed element does not discard the batch. The composite records
   unresolved instruments in `Snapshot.missing` and logs the gap.
-- **`RssNewsSource` / `GdeltNewsSource`** — the live news sources wired through
-  `CompositeNewsSource`. RSS uses BBC, Guardian, CNBC, and MercoPress feeds; GDELT uses
-  its document API. Both fetch publisher-page text before constructing an
-  `Article`. `PublisherArticleTextFetcher` selects known publisher body
-  containers or `article` / `main` content and requires at least 80 words. It rejects non-HTTP URLs and
-  `news.google.com` redirect URLs. A failed request or page without enough
-  article text skips that candidate. The word-count floor filters headlines and
-  short teasers; it does not prove that the full story was extracted. Feed
-  failures fetching individual publisher pages are logged and skipped. RSS
-  adapters tolerate failed feeds when at least one configured feed succeeds;
-  `CompositeNewsSource` tolerates a failed adapter when another source succeeds.
-  If all feeds or all sources fail, `NewsFeedUnavailableException` propagates and
-  report generation fails instead of presenting an outage as an empty news day.
-  A successful feed that contains no matching articles is a valid empty result.
-  `NewsSource.fetch` is synchronous; these adapters use
-  `runBlocking` for HTTP calls. `JsonCorpusNewsSource` remains available for
-  eval and is not wired into production report generation.
-- **`LangChain4jNewsItemExtractor`** — the LLM adapter. Uses a single
-  **OpenAI-compatible** chat model so DeepSeek, Kimi, Ollama, OpenRouter, etc.
-  are swappable (ADR-0003); `baseUrl` and `model` come from
-  `config/application.yml`, the API key from 1Password via `op run`, and both
-  reach the adapter as an `OpenAiCompatibleConfig`. It asks the model for
-  structured JSON and maps it to typed `NewsItem`s. It returns token usage and
-  an estimated cost when configured token rates are available. Requests use
-  LangChain4j's `chatAsync`, so the port suspends instead of parking a thread.
-  The adapter requests OpenAI JSON-object mode with the item shape described in
-  its prompt and parses the answer with kotlinx.serialization — the wire
-  contract stays explicit instead of leaning on provider-specific JSON-schema
-  machinery. The citation's `articleId` is the input `Article`'s id, never
-  something the model echoes back; the model supplies only the quote spans. The
-  raw structured output → `NewsItem` mapping is the adapter's internal seam:
-  candidates that fail the citation invariant (§2.3) or any other domain
-  invariant are dropped and counted (`droppedCandidateCount`) here, so only
-  valid `NewsItem`s cross the port. The port returns these items with token
-  usage metadata for eval cost estimates. Provider and transport failures — including
-  authentication, missing model, rate limiting, server errors, and unreachable
-  endpoints — propagate so a broken configuration or outage fails the run
-  loudly. Only content-level failures, such as empty or malformed model output,
-  are isolated per article.
+- **`RssNewsSource` / `GdeltNewsSource`** — live sources wired through
+  `CompositeNewsSource`. RSS currently uses BBC, Guardian, CNBC, and MercoPress;
+  GDELT uses its document API. Both fetch publisher-page text before creating an
+  `Article`. `PublisherArticleTextFetcher` selects known body containers or
+  `article` / `main` content and requires at least 80 words. It accepts only
+  HTTP URLs and rejects Google News redirects. Candidates with inaccessible or
+  short pages are skipped; the word-count floor filters headlines and teasers
+  but does not establish that the full story was captured. Individual page and
+  feed failures are logged. A failed feed or source is tolerated when another
+  succeeds; if all fail, `NewsFeedUnavailableException` fails report
+  generation. A successful empty feed is a valid empty result. `NewsSource.fetch`
+  is synchronous, so the HTTP adapters use `runBlocking`. Evaluation instead
+  uses `JsonCorpusNewsSource` to resolve Gold-set Article IDs.
+- **`LangChain4jNewsItemExtractor`** — the LLM adapter. It uses one
+  OpenAI-compatible model (ADR-0003), requests JSON-object output, and parses
+  the response with kotlinx.serialization. The input Article supplies the
+  citation's `articleId`; the model supplies quote spans. Candidates that fail
+  domain invariants are dropped and counted as `droppedCandidateCount`. The
+  adapter returns token usage and estimated cost when rates are configured.
+  Its async chat call suspends without blocking a thread. Provider and transport
+  failures propagate; empty or malformed content yields no items for that
+  Article.
 - **`LangChain4jClaimSupportJudge`** — checks whether the exact `Source` quote
   spans support a `NewsItem` assertion. It uses the configured OpenAI-compatible
   model and returns `SUPPORTED`, `UNSUPPORTED`, or `INDETERMINATE`. Missing quote
@@ -368,56 +335,7 @@ Input and output token rates in `config/application.yml` produce estimated cost
 in USD. If usage or rates are unavailable, the report sets `cost.available` to
 `0.0` and omits the cost amounts.
 
-`RunEval` tests cover known metric values, one-to-one matching, empty and partial
-Gold set inputs, citation support, and cost aggregation. Snapshot adapter tests
-compare all 24 instrument quotes to the recorded 2026-10-28 snapshot fixture.
-The eval store has a JSON/Markdown round-trip test and an in-memory test fake;
-the HTTP routes have run, retrieval, not-found, and not-configured tests.
 `JsonEvalStore` writes versioned JSON and Markdown files; the HTTP API exposes
 the JSON report.
 
 ---
-
-## 7. Key seams & the LangChain4j investigation
-
-Two seams carry the project's risk and are kept deliberately narrow:
-
-1. **`NewsItemExtractor`** — the LLM seam. The `NewsItem` shape (enums, lists,
-   optional fields, mandatory `source`, provider divergence) is exactly what
-   stresses LangChain4j's structured output. The upstream investigation is a
-   **time-boxed spike** with explicit exit criteria (a reproducible finding +
-   issue/PR link, or a documented "no issue found").
-2. **`MarketDataFetcher`** — swappable and composite, so free-source coverage gaps can
-   be patched per instrument type without touching the domain.
-
----
-
-## 8. Tech stack
-
-As per PRD §9: **Kotlin + Ktor + LangChain4j**, HTML via `kotlinx.html`, JSON
-snapshots (no DB). LangChain4j provides the chat-model client (single
-OpenAI-compatible endpoint) and JSON-object mode; the adapter owns the mapping
-from the model's JSON answer to typed `NewsItem` candidates (§4).
-
----
-
-## 9. Design principles
-
-1. **Dependencies point inward, and the graph is acyclic.** Domain has zero
-   outward deps; application never imports the adapters layer.
-2. **One composition root.** `CompositionRoot` is the only place that constructs
-   adapters and injects them into use cases; nothing else wires dependencies.
-3. **Ports & adapters.** Production integrations sit behind domain ports; tests
-   use fakes where controlled inputs are needed. Providers and data sources are
-   implementation details behind `NewsItemExtractor`, `NewsSource`, and
-   `MarketDataFetcher`.
-4. **Deep use cases.** Each use case keeps orchestration behind one method;
-   `GenerateDailyReport` is tested through port fakes.
-5. **Invariants live in the types, not in pipeline steps** (parse, don't
-   validate — §2.3).
-6. **Numbers are never extracted, only looked up** (ADR-0001).
-7. **Every claim is cited** — an uncited assertion is a failure, not output
-   (ADR-0002).
-8. **Providers are swappable by config** (ADR-0003).
-9. **Wire format is an adapter concern.** The domain never imports
-   `kotlinx.serialization`.

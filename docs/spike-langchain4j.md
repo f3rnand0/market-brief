@@ -1,29 +1,26 @@
 # LangChain4j structured-output spike
 
-## Purpose and status
+## Purpose
 
-This time-boxed spike checks whether the production LangChain4j OpenAI adapter
-can handle the `NewsItem` JSON contract across OpenAI-compatible models. The
-probe is opt-in and uses the same `LangChain4jNewsItemExtractor` as report
-generation. It writes aggregate, sanitized observations to
+This completed probe checked the production `LangChain4jNewsItemExtractor`
+against the `NewsItem` JSON contract using OpenAI-compatible models. It is
+opt-in and writes aggregate observations to
 `build/reports/langchain4j-opencode.md`; raw model responses and credentials are
-not written.
+excluded from that report.
 
 Run it with the OpenCode Go credential injected from 1Password:
 
 ```bash
-op run --env-file=config/secrets.env -- \
+SPIKE_ARTICLE_LIMIT=2 op run --env-file=config/secrets.env -- \
   ./gradlew liveTest --tests '*LangChain4jOpenCodeSpikeTest'
 ```
 
 The default models are `deepseek-v4.1-flash` and `glm-5.3-flash`. Set
-`SPIKE_MODELS` to a comma-separated list to change them, `SPIKE_ARTICLE_LIMIT`
-to cap requests for a quick probe, `SPIKE_UNLABELED_ONLY=true` to probe only
-Articles without Gold labels, or `SPIKE_REPORT` to choose the report path. The
-test requires `OPENCODE_API_KEY`. The provider's OpenAI-compatible Chat
-Completions route is `https://opencode.ai/inference/go/openai/v1`; the test
-adds a User-Agent and session header. Models requiring the Responses API are
-not included in this LangChain4j `OpenAiChatModel` probe.
+`SPIKE_MODELS` to select models, `SPIKE_ARTICLE_LIMIT` to cap requests,
+`SPIKE_UNLABELED_ONLY=true` to skip labeled Articles, or `SPIKE_REPORT` to set
+the report path. The test requires `OPENCODE_API_KEY`. It calls the OpenCode Go
+Chat Completions route and adds User-Agent and session headers. Models that
+require the Responses API are outside this probe.
 
 ## Expected behavior and evidence
 
@@ -36,8 +33,9 @@ not included in this LangChain4j `OpenAiChatModel` probe.
 | Provider errors | Authentication and rate-limit failures propagate; they must not become empty successful results. | Stubbed tests confirm HTTP 401 and 429 errors propagate. The live report records failures by exception class only; response bodies are omitted. |
 
 Live item counts measure schema parsing, not semantic accuracy. Citation
-support is checked against the Article body. Gold-set semantic matching belongs
-to the M7 eval harness.
+support is checked against the Article body. The evaluation pipeline measures
+Gold-set matching and semantic citation support; see
+[`ARCHITECTURE.md`](ARCHITECTURE.md#6-evaluation-pipeline).
 
 ## Live LangChain4j results
 
@@ -57,34 +55,10 @@ These are schema and citation checks, not a semantic-quality judgment. The
 probe can run against the full packaged corpus by omitting
 `SPIKE_ARTICLE_LIMIT`.
 
-## Earlier direct API comparison
-
-An earlier probe on 2026-11-03 sent hand-built HTTP requests directly to
-OpenCode, bypassing LangChain4j. It processed 40 articles per model. The
-reported JSON, enum, and citation observations below are useful provider
-context, but are not evidence about LangChain4j's request or response handling.
-The raw output files were generated under `build/reports` and are not present
-in the current checkout.
-
-| Model | Responses | Parsed JSON | Items | Invalid enum values | Unsupported citation quotes | Preliminary Gold matches | Go allowance |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| `deepseek-v4.1-flash` | 40 | 40 | 48 | 0 | 0 | 6/8 | $0.00830681 |
-| `glm-5.3-flash` | 40 | 40 | 41 | 0 | 0 | 5/8 | $0.00434980 |
-| `gpt-6-luna` | 40 | 40 | 45 | 0 | 0 | 6/8 | $0.02374120 |
-
-Those preliminary Gold matches used equal type and region plus one overlapping
-subject; they are not the project's official field-level metrics. At that time
-only eight Articles had labels. Free-model endpoint and privacy errors were
-also observed in the direct probe, but are outside the current model set.
-
 ## Conclusion
 
-**No issue found for the probes run.** The production LangChain4j adapter
-processed two corpus Articles with each of the two probed models. The returned
-items had valid domain enums, mapped optional fields, non-empty nested citations,
-and quotes present in their source Articles. No candidates were dropped and no
-provider errors occurred. Separate stubbed adapter tests confirm malformed
-output is converted to an empty extraction and authentication/rate-limit errors
-propagate. The probe found no reproducible LangChain4j or provider defect, so
-there is no upstream issue or PR to link. This conclusion is limited to these
-two models, two Articles, and the tested adapter behavior.
+No issue was found in the tested adapter behavior. Both models returned valid
+typed items and quotes present in the two sampled Articles; neither dropped
+candidates nor provider errors occurred. Stubbed adapter checks cover malformed
+output and authentication/rate-limit errors. This result applies only to the
+two models, two Articles, and behaviors listed above.

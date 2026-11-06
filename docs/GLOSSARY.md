@@ -1,4 +1,4 @@
-# Market Summary Service
+# Market brief vocabulary
 
 A daily report of the most important global investment-market news, generated
 from free web sources and market data.
@@ -62,7 +62,7 @@ publication date. For live news, `body` must contain text extracted from the
 publisher page; a headline or RSS teaser alone is not an Article for extraction.
 
 **Region**:
-A continent tag on a NewsItem: US, China, Europe, Latam, Asia, or Global.
+A geographic category on a NewsItem: US, China, Europe, Latam, Asia, or Global.
 
 **Subject**:
 What a NewsItem is about: a company/ticker, a sector, an index, or an asset
@@ -94,5 +94,4 @@ unsupported, or indeterminate.
 A versioned record of extraction metrics, stored as JSON and Markdown.
 
 **Previous day**:
-The calendar day before the report date; the report is generated on the
-following morning.
+The calendar day before the report date; this defines the report's news window.

@@ -1,14 +1,9 @@
 # Market numbers come from a data API, never from LLM extraction
 
-The report's snapshot and index moves need numbers (levels, percentages). We
-fetch them from a free market-data API (Yahoo Finance primary, with
-per-instrument-type fallbacks) and never parse them out of article prose.
-Extracting numbers from prose is the dominant source of hallucinated or
-unsupported values, which directly conflicts with the integrity goal. The
-summary's index levels and moves therefore come from the `Snapshot`; prose
-contributes only the cause. This departs from the original "extract everything
-from the web" framing, so it's recorded here.
+The snapshot's levels and moves come from market-data APIs; the LLM does not
+extract market numbers from article prose. The summary may use cited news prose
+for a move's cause. This keeps provider-reported values separate from
+extracted claims.
 
-Sources for different asset classes are queried concurrently. When two sources
-cover the same instrument (Yahoo and CNBC both carry US 10Y), the primary wins
-and a fallback only fills a gap.
+Yahoo Finance is primary and CNBC fills fixed-income gaps. When both return an
+instrument, the Yahoo quote wins. The sources run concurrently.

@@ -1,23 +1,14 @@
 # OpenAI-compatible provider abstraction for the LLM
 
-The extractor must work with DeepSeek or Kimi, plus other open models. We use a
-single OpenAI-compatible chat model configured by `baseUrl` + `model` +
-`apiKey`, so providers are swappable without code changes. This avoids lock-in
-to any one provider and enables diffing providers for the structured-output
-investigation.
+The extractor uses one OpenAI-compatible chat model configured by endpoint,
+model name, and API key. Switching compatible providers requires configuration
+changes rather than adapter changes.
 
 The two kinds of configuration are stored differently:
 
-- **Non-sensitive settings** — `baseUrl`, `model`, timeouts, retries, and the
-  name of the environment variable that carries the key — live in
-  `config/application.yml`. They are reviewable in git. The composition root
-  loads them at startup.
-- **The API key** is a secret and is never stored in the repository. It is
-  injected at runtime by 1Password's `op run`, which resolves `op://`
-  references from `config/secrets.env` into environment variables. The
-  composition root reads the named variable and passes the key to the adapter
-  in `OpenAiCompatibleConfig`. Any other secret injector works too.
+- Non-secret settings live in `config/application.yml`.
+- The API key is injected at runtime through the environment. The composition
+  root reads the configured variable and passes a plain `OpenAiCompatibleConfig`
+  to the adapter. The repository stores no API key.
 
-The composition root resolves both and hands the adapter a plain
-`OpenAiCompatibleConfig`, so the adapter stays ignorant of files and
-environment variables.
+This keeps file and environment access in the composition root.

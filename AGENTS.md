@@ -2,10 +2,10 @@
 
 ## Documents
 
-- `docs/PRD.md` — product goals and constraints.
-- `docs/ARCHITECTURE.md` — implemented layers, ports, and runtime behavior;
-  follow it for code changes.
-- `docs/GLOSSARY.md` — canonical domain vocabulary. Use its terms in code.
+- Read `docs/PRD.md` for product goals and constraints.
+- For code changes, read `docs/ARCHITECTURE.md` for current layers, ports, and
+  runtime behavior.
+- Use `docs/GLOSSARY.md` as the canonical domain vocabulary in code and docs.
 
 Keep current behavior distinct from product goals and unfinished work. When a
 change alters what a doc describes, update that doc.
@@ -41,20 +41,19 @@ The couplings no config file confesses:
 
 ## Naming
 
-Class and interface names are noun phrases. A collaborator that performs an
-action takes an agent noun — `MarketDataFetcher`, `JsonReportStore`,
-`RssNewsSource` — and the verb belongs to its method: `snapshot()`, `fetch()`,
-`extract()`. Use cases are the one imperative: `GenerateDailyReport` names the
-step the agent takes.
+Name classes and interfaces with noun phrases. Name collaborators with agent
+nouns — `MarketDataFetcher`, `JsonReportStore`, `RssNewsSource` — and put the
+action in their methods: `snapshot()`, `fetch()`, `extract()`. Name use cases
+with the action they perform, such as `GenerateDailyReport`.
 
 `*Data` names a record (a Kotlin `data class`), not a collaborator.
 
 ## Comments
 
-Comments must preserve information the code cannot express: a non-obvious
-constraint, rationale, or gotcha. KDoc is justified for a caller-visible
-contract that the signature cannot express, such as failure semantics. Do not
-paraphrase names, narrate implementation steps, or repeat the docs above.
+Use comments to preserve information the code cannot express, such as a
+non-obvious constraint, rationale, or gotcha. Use KDoc for caller-visible
+contracts the signature cannot express, such as failure semantics. Keep names,
+types, and structure responsible for explaining ordinary behavior.
 
 Before finishing, review every comment you added or touched and delete any that
 fail this test. Prefer a clearer name or assertion when code can carry the
