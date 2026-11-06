@@ -278,8 +278,13 @@ Concrete adapters implementing the domain ports.
   `news.google.com` redirect URLs. A failed request or page without enough
   article text skips that candidate. The word-count floor filters headlines and
   short teasers; it does not prove that the full story was extracted. Feed
-  failures are logged and converted to empty results, so an outage can look like
-  no articles. `NewsSource.fetch` is synchronous; these adapters use
+  failures fetching individual publisher pages are logged and skipped. RSS
+  adapters tolerate failed feeds when at least one configured feed succeeds;
+  `CompositeNewsSource` tolerates a failed adapter when another source succeeds.
+  If all feeds or all sources fail, `NewsFeedUnavailableException` propagates and
+  report generation fails instead of presenting an outage as an empty news day.
+  A successful feed that contains no matching articles is a valid empty result.
+  `NewsSource.fetch` is synchronous; these adapters use
   `runBlocking` for HTTP calls. `JsonCorpusNewsSource` remains available for
   eval and is not wired into production report generation.
 - **`LangChain4jNewsItemExtractor`** — the LLM adapter. Uses a single

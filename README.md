@@ -31,7 +31,7 @@ See [`docs/PRD.md`](docs/PRD.md) for the product spec,
 PORT=9000 ./gradlew run
 ```
 
-The server wires Google News/Reuters/BBC RSS feeds, GDELT, the Yahoo/CNBC
+The server wires BBC, Guardian, CNBC, and MercoPress RSS feeds, GDELT, the Yahoo/CNBC
 market-data adapters, and the configured LLM extractor. The packaged static
 corpus is available for tests but is not used by the running server. Generate
 and read a report:
@@ -59,10 +59,12 @@ curl http://localhost:8080/report/2026-10-28.html \
   --output 2026-10-28.html
 ```
 
-Regional news is currently grouped in extraction order; ranking, per-outlet and
-per-region caps, and event deduplication are not implemented.
+Regional news is ranked by Article publication date with a two-item per-outlet
+and five-item per-region cap; duplicate events and GLOBAL items are excluded
+from regional sections. Feed outages are tolerated when another feed or source
+succeeds, and fail report generation when all configured news sources are down.
 See [the architecture guide](docs/ARCHITECTURE.md#24-section-assembly-rules) for
-current report-selection behavior.
+the report-selection behavior.
 
 ## Configuration
 

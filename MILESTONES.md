@@ -164,7 +164,7 @@ than placeholders. **Done** — `./gradlew build` passes.
 **Learn**: precision/recall metrics, eval design, "don't mark your own
 homework" verification.
 
-## M8 — Live news ingestion (in progress)
+## M8 — Live news ingestion ✅
 
 Use free live sources in production and select regional items by the defined
 policy.
@@ -175,11 +175,16 @@ policy.
   two-item per-outlet and five-item per-region cap. Event-key deduplication uses
   normalized type, region, and subjects; `GLOBAL` items stay out of regional
   sections. A stable 32-Article corpus test covers selection and coverage.
-- **Remaining**: fixture-backed feed tests, live smoke run, and an explicit
-  operational policy for feed failures, which currently become empty results.
+- **Completed**: fixture-backed RSS tests cover parsing, date filtering,
+  publisher-page text fetching, partial outages, and all-source failures. A
+  live BBC smoke test confirms publisher Articles can be fetched. Individual
+  feed/source failures are tolerated when another succeeds; if all configured
+  sources fail, report generation fails visibly rather than returning an empty
+  news result.
 
 **Done when**: feed fixtures and live smoke verification pass, and report
-selection applies the documented regional policy with tests.
+selection applies the documented regional policy with tests. **Done** —
+`./gradlew build` and the opt-in BBC live smoke test pass.
 **Learn**: RSS/XML parsing, HTTP resilience (timeouts, retries), multi-source
 dedup.
 
@@ -199,6 +204,6 @@ objects), provider divergence.
 
 ## Release mapping (PRD §13)
 
-These are release targets, not completion status; M7 and M8 remain in progress.
+These are release targets, not completion status.
 
 - PoC = M0–M5 · Eval = M7 · Live = M6 + M8 · Spike = M9
