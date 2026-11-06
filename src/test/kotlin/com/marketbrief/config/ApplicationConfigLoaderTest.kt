@@ -46,7 +46,7 @@ class ApplicationConfigLoaderTest {
             """.trimIndent(),
         )
 
-        assertEquals("LLM_API_KEY", config.llm.apiKeyEnv)
+        assertEquals("OPENCODE_API_KEY", config.llm.apiKeyEnv)
         assertEquals(120, config.llm.requestTimeoutSeconds)
         assertEquals(2, config.llm.maxRetries)
     }
@@ -174,7 +174,7 @@ class ApplicationConfigLoaderTest {
 
         val error = assertFailsWith<IllegalStateException> { config.toOpenAiCompatibleConfig(emptyMap()) }
 
-        assertTrue(error.message!!.contains("LLM_API_KEY"))
+        assertTrue(error.message!!.contains("OPENCODE_API_KEY"))
         assertTrue(error.message!!.contains("op run"))
     }
 }
