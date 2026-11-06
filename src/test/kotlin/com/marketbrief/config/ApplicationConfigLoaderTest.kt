@@ -83,10 +83,11 @@ class ApplicationConfigLoaderTest {
     fun `loads the repository config file`() {
         val config = ApplicationConfigLoader.load(Path.of(ApplicationConfigLoader.DEFAULT_PATH))
 
-        assertTrue(config.llm.baseUrl.startsWith("http"))
-        assertTrue(config.llm.model.isNotBlank())
-        assertEquals(0.30, config.llm.inputCostPerMillionUsd)
-        assertEquals(1.20, config.llm.outputCostPerMillionUsd)
+        assertEquals("https://opencode.ai/inference/go/openai/v1", config.llm.baseUrl)
+        assertEquals("deepseek-v4.1-flash", config.llm.model)
+        assertEquals("OPENCODE_API_KEY", config.llm.apiKeyEnv)
+        assertEquals(null, config.llm.inputCostPerMillionUsd)
+        assertEquals(null, config.llm.outputCostPerMillionUsd)
     }
 
     @Test
