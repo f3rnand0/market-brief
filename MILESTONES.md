@@ -188,15 +188,20 @@ selection applies the documented regional policy with tests. **Done** —
 **Learn**: RSS/XML parsing, HTTP resilience (timeouts, retries), multi-source
 dedup.
 
-## M9 — LangChain4j spike (planned, parallel, time-boxed)
+## M9 — LangChain4j spike ✅
 
-PRD §12: probe structured output with the `NewsItem` shape across providers
-(DeepSeek / Kimi / open models). Exit criteria: minimal reproducer +
-observed-vs-expected + upstream issue/PR link, **or** documented "no issue
-found".
+PRD §12: probe structured output with the `NewsItem` shape across
+OpenAI-compatible models. The opt-in live probe uses the production
+`LangChain4jNewsItemExtractor`, compares expected and observed behavior for
+JSON shape, enums, optional fields, citations, malformed output, and provider
+errors, and writes sanitized aggregate results. The 2026-11-06 probe covered
+two Articles with DeepSeek V4.1 Flash and GLM 5.3 Flash; all emitted citations
+were supported by their Articles and no candidates were dropped. Stubbed
+adapter tests cover malformed output and authentication/rate-limit errors.
 
-**Done when**: findings documented (e.g. `docs/spike-langchain4j.md`) per the
-exit criteria.
+**Done when**: findings documented per the exit criteria. **Done** — no issue
+was found for the probes run; scope and observed-vs-expected results are in
+[`docs/spike-langchain4j.md`](docs/spike-langchain4j.md).
 **Learn**: structured-output edge cases (enums, optionals, nested citation
 objects), provider divergence.
 

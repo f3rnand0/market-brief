@@ -1,81 +1,90 @@
 # LangChain4j structured-output spike
 
-## Status
+## Purpose and status
 
-The spike uses the deterministic corpus in `src/main/resources/corpus/articles.json`
-and the corresponding labels in `src/main/resources/gold/`. Live provider runs are
-opt-in and must be launched through 1Password:
+This time-boxed spike checks whether the production LangChain4j OpenAI adapter
+can handle the `NewsItem` JSON contract across OpenAI-compatible models. The
+probe is opt-in and uses the same `LangChain4jNewsItemExtractor` as report
+generation. It writes aggregate, sanitized observations to
+`build/reports/langchain4j-opencode.md`; raw model responses and credentials are
+not written.
+
+Run it with the OpenCode Go credential injected from 1Password:
 
 ```bash
-op run --env-file=config/secrets.env -- ./gradlew liveTest
+op run --env-file=config/secrets.env -- \
+  ./gradlew liveTest --tests '*LangChain4jOpenCodeSpikeTest'
 ```
 
-`OPENCODE_API_KEY` is a service-account credential stored in 1Password. It must
-never be committed or printed in probe output.
+The default models are `deepseek-v4.1-flash` and `glm-5.3-flash`. Set
+`SPIKE_MODELS` to a comma-separated list to change them, `SPIKE_ARTICLE_LIMIT`
+to cap requests for a quick probe, `SPIKE_UNLABELED_ONLY=true` to probe only
+Articles without Gold labels, or `SPIKE_REPORT` to choose the report path. The
+test requires `OPENCODE_API_KEY`. The provider's OpenAI-compatible Chat
+Completions route is `https://opencode.ai/inference/go/openai/v1`; the test
+adds a User-Agent and session header. Models requiring the Responses API are
+not included in this LangChain4j `OpenAiChatModel` probe.
 
-## Probe contract
+## Expected behavior and evidence
 
-Each selected model receives the same article and extraction prompt. Results are
-checked against the article body for citation support, against the gold set for
-field-level expectations, and against the JSON contract used by
-`LangChain4jNewsItemExtractor`.
+| Area | Expected behavior | Evidence and observed behavior |
+| --- | --- | --- |
+| JSON shape | A JSON object with an `items` array becomes typed domain items. Malformed JSON yields no items. | Live results are summarized in the generated report. The stubbed adapter test confirms malformed output yields an empty extraction. |
+| Enums | `type`, `region`, and optional `direction` use domain enum values. Invalid values are dropped and counted. | The adapter maps valid values to enums; the stubbed test confirms an invalid region is dropped. Live dropped-candidate totals are recorded per model. |
+| Optional fields | Missing `direction` and `cause` map to `null`; missing `metrics` maps to an empty list. | A stubbed test verifies all three defaults on an otherwise valid item. Live counts of unset fields and empty metrics appear per model. |
+| Nested citations | `source.quotes` is a non-empty list of verbatim spans; the adapter supplies the current Article ID. | Stubbed tests verify nested mapping and the Article ID. Live results count quotes and verify each against the source Article body. |
+| Provider errors | Authentication and rate-limit failures propagate; they must not become empty successful results. | Stubbed tests confirm HTTP 401 and 429 errors propagate. The live report records failures by exception class only; response bodies are omitted. |
 
-The selected OpenCode Go models are `deepseek-v4.1-flash`, `glm-5.3-flash`, and
-`gpt-6-luna`. Free models are excluded from the planned comparison. The Go API has a separate route from the general Console
-inference API: Chat Completions uses
-`https://opencode.ai/inference/go/openai/v1/chat/completions`, while GPT uses
-`https://opencode.ai/inference/go/openai/v1/responses`. Requests authenticate
-with `OPENCODE_API_KEY` and include a client User-Agent and stable
-`x-opencode-session` header.
+Live item counts measure schema parsing, not semantic accuracy. Citation
+support is checked against the Article body. Gold-set semantic matching belongs
+to the M7 eval harness.
 
-The live model catalog can be queried at
-`https://opencode.ai/inference/go/v1/models`. The general catalog and general
-inference routes are not substitutes for the Go routes.
+## Live LangChain4j results
 
-DeepSeek V4.1 requires the workspace's allowed region to include Global. If the
-workspace is configured for Europe and United States only, the Go API rejects
-that model before inference.
+Run on 2026-11-06 through the production extractor, with a two-Article cap to
+bound provider requests. The generated report contained per-Article details;
+the results below are the retained summary. No raw model response was saved.
 
-An initial zero-cost smoke request to `beam-free` succeeded, but used invented
-enum labels before the prompt was tightened; free models are not part of the
-planned comparison. `iceman-contributor-free` was denied because the workspace
-privacy setting does not allow endpoints that train on request data.
+| Model | Articles | Provider errors | Typed items | Items missing direction | Items missing cause | Items with empty metrics | Citation quotes | Unsupported quotes | Dropped candidates | Usage metadata |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| `deepseek-v4.1-flash` | 2 | 0 | 8 | 2 | 2 | 2 | 11 | 0 | 0 | 2/2 |
+| `glm-5.3-flash` | 2 | 0 | 5 | 1 | 1 | 0 | 6 | 0 | 0 | 2/2 |
 
-With the Go routes and schema-constrained prompt, the full corpus comparison
-completed on 2026-11-03. Each model processed all 40 articles (120 requests
-total). GPT-6 Luna used the Responses API; DeepSeek and GLM used Chat
-Completions. The GPT-6 Luna raw responses are in
-`build/reports/langchain4j-opencode.md`; the DeepSeek and GLM responses for
-the 32 newly discovered headlines are in
-`build/reports/langchain4j-open-candidates.md`.
+Both models returned typed items for Articles `article-001` and `article-002`.
+Every emitted quote was present verbatim in its Article. Missing optional
+fields were accepted by the extractor; invalid candidates were not observed.
+These are schema and citation checks, not a semantic-quality judgment. The
+probe can run against the full packaged corpus by omitting
+`SPIKE_ARTICLE_LIMIT`.
 
-| Model | Responses | Parsed JSON | Items | Invalid enum values | Unsupported citation quotes | Gold matches* | Go allowance |
+## Earlier direct API comparison
+
+An earlier probe on 2026-11-03 sent hand-built HTTP requests directly to
+OpenCode, bypassing LangChain4j. It processed 40 articles per model. The
+reported JSON, enum, and citation observations below are useful provider
+context, but are not evidence about LangChain4j's request or response handling.
+The raw output files were generated under `build/reports` and are not present
+in the current checkout.
+
+| Model | Responses | Parsed JSON | Items | Invalid enum values | Unsupported citation quotes | Preliminary Gold matches | Go allowance |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | `deepseek-v4.1-flash` | 40 | 40 | 48 | 0 | 0 | 6/8 | $0.00830681 |
 | `glm-5.3-flash` | 40 | 40 | 41 | 0 | 0 | 5/8 | $0.00434980 |
 | `gpt-6-luna` | 40 | 40 | 45 | 0 | 0 | 6/8 | $0.02374120 |
 
-All three models returned only valid JSON for all articles, used the domain enum
-values, and emitted citation quotes found verbatim in each article body. Direct
-cost was reported as zero; the Go allowance amounts above were reported in
-`usage.opencode.allowance`.
+Those preliminary Gold matches used equal type and region plus one overlapping
+subject; they are not the project's official field-level metrics. At that time
+only eight Articles had labels. Free-model endpoint and privacy errors were
+also observed in the direct probe, but are outside the current model set.
 
-At the time of the model runs, only 8 articles had gold labels (8 expected
-items). *Gold matches use a preliminary item match requiring equal type and
-region plus at least one overlapping subject: DeepSeek matched 6, GLM 5, and
-GPT-6 Luna 6. This is not the project's official field-level eval. Direct cost
-was reported as zero and Go allowance totaled $0.03639781.
+## Conclusion
 
-The 32 RSS records contained Google News headlines, not publisher-page text.
-Their headline-based labels were removed from the active Gold set. The packaged
-corpus now contains only the 8 curated Articles with full text. Live RSS/GDELT
-candidates must pass publisher-page text extraction before they become Articles
-or receive Gold labels.
-
-## Exit criteria
-
-Document observed-versus-expected behavior for all three models, including JSON
-shape, enums, optional fields, nested citations, malformed output, and provider
-errors. If a reproducible LangChain4j or provider defect is found, record a
-sanitized fixture and an upstream issue or PR link. Otherwise explicitly record
-that no issue was found for the probes run.
+**No issue found for the probes run.** The production LangChain4j adapter
+processed two corpus Articles with each of the two probed models. The returned
+items had valid domain enums, mapped optional fields, non-empty nested citations,
+and quotes present in their source Articles. No candidates were dropped and no
+provider errors occurred. Separate stubbed adapter tests confirm malformed
+output is converted to an empty extraction and authentication/rate-limit errors
+propagate. The probe found no reproducible LangChain4j or provider defect, so
+there is no upstream issue or PR to link. This conclusion is limited to these
+two models, two Articles, and the tested adapter behavior.
