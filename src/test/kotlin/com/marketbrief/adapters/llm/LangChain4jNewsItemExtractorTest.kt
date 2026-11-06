@@ -120,6 +120,29 @@ class LangChain4jNewsItemExtractorTest {
     }
 
     @Test
+    fun `accepts missing optional fields and maps nested citation`() = runBlocking {
+        val content = """
+            {"items": [{
+              "type": "MACRO",
+              "region": "GLOBAL",
+              "subjects": ["Rates"],
+              "assertion": "Bond yields increased.",
+              "source": {"quotes": ["Bond yields increased."]}
+            }]}
+        """.trimIndent()
+
+        StubChatServer(content).use { server ->
+            val item = extractor(server).extract(article).items.single()
+
+            assertEquals(null, item.direction)
+            assertEquals(null, item.cause)
+            assertTrue(item.metrics.isEmpty())
+            assertEquals("a1", item.source.articleId)
+            assertEquals(listOf("Bond yields increased."), item.source.quotes)
+        }
+    }
+
+    @Test
     fun `requests a json-object completion and sends the article text`() = runBlocking {
         StubChatServer("""{"items": []}""").use { server ->
             extractor(server).extract(article)

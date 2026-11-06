@@ -5,6 +5,7 @@ import com.marketbrief.domain.DayWindow
 import com.marketbrief.domain.NewsSource
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
+import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -23,16 +24,26 @@ class RssNewsSource(private val client: HttpClient, private val feedUrls: List<S
     private val articleTextFetcher = PublisherArticleTextFetcher(client)
 
     override fun fetch(window: DayWindow): List<Article> = runBlocking {
+        var successfulFeeds = 0
         val candidates = feedUrls.flatMap { url ->
             try {
-                RssParser.parse(client.get(url).bodyAsText())
+                val entries = RssParser.parse(client.get(url).successfulBody())
+                successfulFeeds++
+                entries
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 log.warn("Could not read news feed {}", url, e)
                 emptyList()
             }
-        }.filter { it.publishedAt == window.date }.distinctBy { it.url }
+        }.also {
+            if (successfulFeeds == 0 &&
+                feedUrls.isNotEmpty()
+            ) {
+                throw NewsFeedUnavailableException("All RSS feeds failed")
+            }
+        }
+            .filter { it.publishedAt == window.date }.distinctBy { it.url }
         candidates.mapNotNull { candidate ->
             try {
                 articleTextFetcher.fetch(candidate)
@@ -69,13 +80,13 @@ class GdeltNewsSource(
 
     override fun fetch(window: DayWindow): List<Article> = runBlocking {
         val candidates = try {
-            RssParser.parse(client.get(endpoint).bodyAsText())
+            RssParser.parse(client.get(endpoint).successfulBody())
                 .filter { it.publishedAt == window.date }.distinctBy { it.url }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
             log.warn("Could not read GDELT feed {}", endpoint, e)
-            emptyList()
+            throw NewsFeedUnavailableException("GDELT feed failed: $endpoint")
         }
         candidates.mapNotNull { candidate ->
             try {
@@ -95,9 +106,37 @@ class GdeltNewsSource(
 }
 
 class CompositeNewsSource(private val sources: List<NewsSource>) : NewsSource {
-    override fun fetch(window: DayWindow): List<Article> = sources.flatMap { it.fetch(window) }
-        .distinctBy { it.url.ifBlank { it.id } }
-        .sortedWith(compareByDescending<Article> { it.publishedAt }.thenBy { it.id })
+    override fun fetch(window: DayWindow): List<Article> {
+        var successfulSources = 0
+        val articles = sources.flatMap { source ->
+            try {
+                source.fetch(window).also { successfulSources++ }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                log.warn("News source failed; continuing with remaining sources", e)
+                emptyList()
+            }
+        }
+        if (successfulSources == 0 &&
+            sources.isNotEmpty()
+        ) {
+            throw NewsFeedUnavailableException("All news sources failed")
+        }
+        return articles.distinctBy { it.url.ifBlank { it.id } }
+            .sortedWith(compareByDescending<Article> { it.publishedAt }.thenBy { it.id })
+    }
+
+    private companion object {
+        val log = LoggerFactory.getLogger(CompositeNewsSource::class.java)
+    }
+}
+
+class NewsFeedUnavailableException(message: String) : RuntimeException(message)
+
+private suspend fun HttpResponse.successfulBody(): String {
+    check(status.value in 200..299) { "News feed returned HTTP ${status.value}" }
+    return bodyAsText()
 }
 
 private object RssParser {
