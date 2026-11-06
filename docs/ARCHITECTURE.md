@@ -220,11 +220,13 @@ Use cases orchestrate the ports and domain services.
   4. Section assembly → `Report`.
   5. `ReportStore.save(...)`.
 - **`RunEval`** — filters fetched articles to gold-set IDs, runs extraction,
-  computes exact and field-level item metrics, checks quote presence, judges
-  citation support, and saves a versioned eval report (see §6). Evaluation is
-  sequential. The composition root supplies `JsonCorpusNewsSource` so eval uses
-  the packaged Articles referenced by the Gold set, not the live RSS/GDELT
+  coordinates `NewsItemMetricsEvaluator`, `CitationMetricsEvaluator`, and
+  `EvalReportFormatter`, then saves a versioned eval report (see §6). Evaluation
+  is sequential. The composition root supplies `JsonCorpusNewsSource` so eval
+  uses the packaged Articles referenced by the Gold set, not the live RSS/GDELT
   source. `RunEval` fails if no Gold set Articles match or if any are missing.
+  Item matching, citation scoring, and Markdown formatting live in their
+  respective collaborators.
 
 `GenerateDailyReport.generate` is `suspend`: the `MarketDataFetcher` and
 `NewsItemExtractor` ports are suspending, and the HTTP layer calls the use case
@@ -330,6 +332,11 @@ judge. For present quotes, `LangChain4jClaimSupportJudge` returns a support
 verdict; an unreadable verdict is indeterminate. The Markdown report includes
 up to five deterministic citation decisions for manual review. The judge uses
 the configured extraction model, so the sample remains important.
+
+`NewsItemMetricsEvaluator` owns exact and field-level matching,
+`CitationMetricsEvaluator` owns quote checks and semantic support scoring, and
+`EvalReportFormatter` renders the metrics and citation review samples. `RunEval`
+coordinates these collaborators and persists the report.
 
 Input and output token rates in `config/application.yml` produce estimated cost
 in USD. If usage or rates are unavailable, the report sets `cost.available` to
