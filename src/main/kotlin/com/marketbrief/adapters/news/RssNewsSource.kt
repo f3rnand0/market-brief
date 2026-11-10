@@ -11,12 +11,15 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.jsoup.Jsoup
 import org.slf4j.LoggerFactory
+import java.net.InetAddress
 import java.net.URI
+import java.net.UnknownHostException
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.concurrent.CancellationException
+import javax.xml.XMLConstants
 import javax.xml.parsers.DocumentBuilderFactory
 
 class RssNewsSource(private val client: HttpClient, private val feedUrls: List<String> = DEFAULT_FEEDS) : NewsSource {
@@ -147,7 +150,16 @@ private object RssParser {
     )
 
     fun parse(xml: String): List<RssEntry> {
-        val factory = DocumentBuilderFactory.newInstance().apply { isNamespaceAware = false }
+        val factory = DocumentBuilderFactory.newInstance().apply {
+            isNamespaceAware = false
+            isXIncludeAware = false
+            setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true)
+            setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)
+            setFeature("http://xml.org/sax/features/external-general-entities", false)
+            setFeature("http://xml.org/sax/features/external-parameter-entities", false)
+            setAttribute(XMLConstants.ACCESS_EXTERNAL_DTD, "")
+            setAttribute(XMLConstants.ACCESS_EXTERNAL_SCHEMA, "")
+        }
         val document = factory.newDocumentBuilder().parse(xml.byteInputStream())
         return document.getElementsByTagName("item").let { nodes ->
             (0 until nodes.length).mapNotNull { index ->
@@ -196,13 +208,16 @@ private data class RssEntry(
 )
 
 private class PublisherArticleTextFetcher(private val client: HttpClient) {
+    private val redirectDisabledClient = client.config { followRedirects = false }
+
     suspend fun fetch(entry: RssEntry): Article? {
         val uri = URI(entry.url)
         if (uri.scheme !in setOf("http", "https") || uri.host.isNullOrBlank()) return null
         if (uri.host.equals("news.google.com", ignoreCase = true)) return null
+        if (!uri.hasPublicAddress()) return null
 
         val response = withTimeout(ARTICLE_REQUEST_TIMEOUT_MILLIS) {
-            client.get(entry.url) {
+            redirectDisabledClient.get(entry.url) {
                 headers.append("User-Agent", USER_AGENT)
                 headers.append("Accept", "text/html,application/xhtml+xml")
             }
@@ -232,6 +247,48 @@ private class PublisherArticleTextFetcher(private val client: HttpClient) {
     }
 
     private fun hasArticleLength(text: String): Boolean = text.split(Regex("\\s+")).size >= MINIMUM_ARTICLE_WORDS
+
+    private fun URI.hasPublicAddress(): Boolean = try {
+        InetAddress.getAllByName(host).all { it.isPublicAddress() }
+    } catch (_: UnknownHostException) {
+        false
+    }
+
+    private fun InetAddress.isPublicAddress(): Boolean {
+        val address = address
+        if (isAnyLocalAddress || isLoopbackAddress || isLinkLocalAddress || isSiteLocalAddress || isMulticastAddress) {
+            return false
+        }
+        if (address.size == 4) {
+            val first = address[0].toInt() and 0xff
+            val second = address[1].toInt() and 0xff
+            return when {
+                first == 0 || first == 10 || first == 127 || first >= 224 -> false
+                first == 100 && second in 64..127 -> false
+                first == 169 && second == 254 -> false
+                first == 172 && second in 16..31 -> false
+                first == 192 && second == 0 && (address[2].toInt() and 0xff) == 0 -> false
+                first == 192 && second == 2 -> false
+                first == 192 && second == 168 -> false
+                first == 192 && second == 88 && (address[2].toInt() and 0xff) == 99 -> false
+                first == 198 && second in setOf(18, 19, 51) -> false
+                first == 203 && second == 0 && (address[2].toInt() and 0xff) == 113 -> false
+                else -> true
+            }
+        }
+        if (address.size == 16) {
+            val first = address[0].toInt() and 0xff
+            val second = address[1].toInt() and 0xff
+            return when {
+                first and 0xfe == 0xfc -> false
+                first == 0xfe && second and 0xc0 == 0x80 -> false
+                first == 0xff -> false
+                first == 0x20 && second == 0x01 && address[2] == 0x0d.toByte() && address[3] == 0xb8.toByte() -> false
+                else -> true
+            }
+        }
+        return false
+    }
 
     private companion object {
         const val ARTICLE_REQUEST_TIMEOUT_MILLIS = 15_000L

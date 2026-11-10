@@ -13,6 +13,7 @@ import io.ktor.http.headersOf
 import java.time.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 class PublisherArticleTextFetcherTest {
@@ -23,7 +24,7 @@ class PublisherArticleTextFetcherTest {
         val client = mockClient { request ->
             when (request.url.encodedPath) {
                 "/feed" -> respond(
-                    rss("https://publisher.example/article"),
+                    rss("https://93.184.216.34/article"),
                     headers = headersOf(HttpHeaders.ContentType, "application/rss+xml"),
                 )
 
@@ -49,7 +50,7 @@ class PublisherArticleTextFetcherTest {
     fun `does not return a headline or short teaser when publisher text is unavailable`() {
         val client = mockClient { request ->
             when (request.url.encodedPath) {
-                "/feed" -> respond(rss("https://publisher.example/article"))
+                "/feed" -> respond(rss("https://93.184.216.34/article"))
 
                 "/article" -> respond(
                     "<html><article><h1>Headline only</h1><p>A short RSS-style teaser.</p></article></html>",
@@ -72,7 +73,7 @@ class PublisherArticleTextFetcherTest {
             .joinToString(" ")
         val client = mockClient { request ->
             when (request.url.encodedPath) {
-                "/feed" -> respond(rss("https://publisher.example/article"))
+                "/feed" -> respond(rss("https://93.184.216.34/article"))
 
                 "/article" -> respond(
                     "<html><div data-test=\"articleBody\">${paragraphs(articleText)}</div></html>",
@@ -96,7 +97,7 @@ class PublisherArticleTextFetcherTest {
             .joinToString(" ")
         val client = mockClient { request ->
             when (request.url.encodedPath) {
-                "/feed" -> respond(rss("https://publisher.example/article"))
+                "/feed" -> respond(rss("https://93.184.216.34/article"))
 
                 "/article" -> respond(
                     "<html><section class=\"content-page\"><p>$articleText</p></section></html>",
@@ -114,6 +115,59 @@ class PublisherArticleTextFetcherTest {
         assertTrue(articles.single().body.contains("new market development"))
     }
 
+    @Test
+    fun `does not fetch loopback publisher URLs`() {
+        val requestedPaths = mutableListOf<String>()
+        val client = mockClient { request ->
+            requestedPaths += request.url.encodedPath
+            if (request.url.encodedPath == "/feed") {
+                respond(rss("http://127.0.0.1/admin"))
+            } else {
+                respond("", HttpStatusCode.NotFound)
+            }
+        }
+
+        val articles = RssNewsSource(client, listOf("https://feed.example/feed"))
+            .fetch(DayWindow(LocalDate.of(2026, 11, 3)))
+
+        assertTrue(articles.isEmpty())
+        assertEquals(listOf("/feed"), requestedPaths)
+    }
+
+    @Test
+    fun `does not follow publisher redirects`() {
+        val requestedPaths = mutableListOf<String>()
+        val client = mockClient { request ->
+            requestedPaths += request.url.encodedPath
+            if (request.url.encodedPath == "/feed") {
+                respond(rss("https://93.184.216.34/article"))
+            } else {
+                respond("", HttpStatusCode.Found, headers = headersOf(HttpHeaders.Location, "http://127.0.0.1/admin"))
+            }
+        }
+
+        val articles = RssNewsSource(client, listOf("https://feed.example/feed"))
+            .fetch(DayWindow(LocalDate.of(2026, 11, 3)))
+
+        assertTrue(articles.isEmpty())
+        assertEquals(listOf("/feed", "/article"), requestedPaths)
+    }
+
+    @Test
+    fun `rejects RSS documents with a doctype`() {
+        val maliciousRss = """
+            <!DOCTYPE rss [<!ENTITY secret SYSTEM "file:///etc/passwd">]>
+            <rss><channel><item><title>&secret;</title><link>https://publisher.example/article</link>
+            <pubDate>Tue, 03 Nov 2026 09:00:00 GMT</pubDate></item></channel></rss>
+        """.trimIndent()
+        val client = mockClient { respond(maliciousRss) }
+
+        assertFailsWith<NewsFeedUnavailableException> {
+            RssNewsSource(client, listOf("https://feed.example/feed"))
+                .fetch(DayWindow(LocalDate.of(2026, 11, 3)))
+        }
+    }
+
     private fun mockClient(handler: suspend MockRequestHandleScope.(HttpRequestData) -> HttpResponseData) =
         HttpClient(MockEngine) {
             engine {
@@ -126,7 +180,7 @@ class PublisherArticleTextFetcherTest {
           <title>Market headline</title>
           <link>$articleUrl</link>
           <pubDate>Tue, 03 Nov 2026 09:00:00 GMT</pubDate>
-          <source url="https://publisher.example">Example Publisher</source>
+          <source url="https://93.184.216.34">Example Publisher</source>
           <description>Headline-only teaser.</description>
         </item></channel></rss>
     """.trimIndent()

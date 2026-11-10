@@ -76,6 +76,8 @@ class LangChain4jNewsItemExtractor(
         .build()
 
     private fun toNewsItem(article: Article, candidate: CandidateItem): NewsItem? = try {
+        val quotes = candidate.source?.quotes.orEmpty().map { it.trim() }.filter { it.isNotEmpty() }
+        require(quotes.all(article::containsQuote)) { "Source quote is absent from article ${article.id}" }
         NewsItem(
             type = enumValueOf<NewsItemType>(candidate.type.orEmpty().trim().uppercase()),
             region = enumValueOf<Region>(candidate.region.orEmpty().trim().uppercase()),
@@ -87,7 +89,7 @@ class LangChain4jNewsItemExtractor(
             metrics = candidate.metrics.map { Metric(it.value.trim(), it.unit.trim()) },
             source = Source(
                 articleId = article.id,
-                quotes = candidate.source?.quotes.orEmpty().map { it.trim() }.filter { it.isNotEmpty() },
+                quotes = quotes,
             ),
         )
     } catch (e: IllegalArgumentException) {
