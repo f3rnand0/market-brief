@@ -1,6 +1,7 @@
 package com.marketbrief.domain
 
 import java.time.LocalDate
+import java.util.Locale
 
 data class Article(
     val id: String,
@@ -15,4 +16,17 @@ data class Article(
         require(headline.isNotBlank()) { "Article headline must not be blank" }
         require(body.isNotBlank()) { "Article body must not be blank" }
     }
+
+    fun containsQuote(quote: String): Boolean {
+        val normalizedQuote = quote.normalizedForQuoteMatch()
+        return normalizedQuote.isNotEmpty() &&
+            (
+                normalizedTextBody().contains(normalizedQuote) ||
+                    headline.normalizedForQuoteMatch().contains(normalizedQuote)
+                )
+    }
+
+    private fun normalizedTextBody(): String = body.normalizedForQuoteMatch()
+
+    private fun String.normalizedForQuoteMatch(): String = trim().lowercase(Locale.ROOT).replace(Regex("\\s+"), " ")
 }

@@ -126,6 +126,7 @@ class CorpusValidationTest {
             .distinct()
             .sorted()
             .joinToString("|"),
+        assertion.trim().lowercase(Locale.ROOT).replace(Regex("\\s+"), " "),
     ).joinToString(":")
 }
 

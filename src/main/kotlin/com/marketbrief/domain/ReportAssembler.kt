@@ -98,6 +98,7 @@ object ReportAssembler {
             .distinct()
             .sorted()
             .joinToString("|"),
+        assertion.trim().lowercase(Locale.ROOT).replace(Regex("\\s+"), " "),
     ).joinToString(":")
 
     private fun otherNewsItems(items: List<NewsItem>): List<NewsItem> = items

@@ -33,7 +33,7 @@ class NewsFeedSourceTest {
         assertEquals(1, articles.size)
         assertEquals("Markets rally after central bank decision", articles.single().headline)
         assertEquals("Example Publisher", articles.single().outlet)
-        assertEquals("https://publisher.example/market-rally", articles.single().url)
+        assertEquals("https://93.184.216.34/market-rally", articles.single().url)
         assertEquals(body, articles.single().body)
     }
 

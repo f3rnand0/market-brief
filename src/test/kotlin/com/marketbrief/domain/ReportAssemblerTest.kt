@@ -44,6 +44,22 @@ class ReportAssemblerTest {
     }
 
     @Test
+    fun `regional news keeps distinct assertions about the same subject`() {
+        val items = listOf(
+            item(type = NewsItemType.MACRO, subject = "Federal Reserve", assertion = "The Fed held rates steady."),
+            item(
+                type = NewsItemType.MACRO,
+                subject = "Federal Reserve",
+                assertion = "The Fed signaled a slower balance-sheet runoff.",
+            ),
+        )
+
+        val regional = assemble(snapshot, items).regionalNews[Region.US].orEmpty()
+
+        assertEquals(items.map(NewsItem::assertion), regional.map(NewsItem::assertion))
+    }
+
+    @Test
     fun `regional news is grouped by region, Global items excluded`() {
         val items = listOf(
             item(type = NewsItemType.MACRO, region = Region.US, subject = "Fed"),
