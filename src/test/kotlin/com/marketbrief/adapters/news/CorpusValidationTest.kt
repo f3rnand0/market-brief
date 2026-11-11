@@ -31,7 +31,7 @@ class CorpusValidationTest {
     }
 
     @Test
-    fun `32-Article corpus produces stable regional selections`() {
+    fun `32-Article corpus produces deduplicated bounded sections`() {
         val articles = loadArticles()
         val goldItems = JsonGoldSet.fromResource().cases.flatMap { it.expectedItems }
         assertEquals(32, articles.size)
@@ -44,25 +44,24 @@ class CorpusValidationTest {
         )
         val articleById = articles.associateBy(Article::id)
 
-        assertEquals(
-            mapOf(
-                Region.US to listOf("article-025", "article-027", "article-001", "article-001"),
-                Region.CHINA to listOf("article-002", "article-002"),
-                Region.EUROPE to listOf("article-010", "article-016", "article-003", "article-003"),
-                Region.LATAM to listOf("article-004", "article-004"),
-                Region.ASIA to listOf("article-012", "article-005", "article-005"),
-            ),
-            report.regionalNews.mapValues { (_, items) -> items.map { it.source.articleId } },
-        )
+        val visibleItems = report.regionalNews.values.flatten() + report.companySectorNews + report.otherNews
         report.regionalNews.forEach { (_, items) ->
-            assertTrue(items.size <= 5)
+            assertTrue(items.size <= 4)
             assertTrue(
                 items.groupingBy { articleById.getValue(it.source.articleId).outlet }
                     .eachCount().values.all { it <= 2 },
             )
-            assertEquals(items.map { it.eventKey() }.size, items.map { it.eventKey() }.toSet().size)
         }
-        assertEquals(3, report.otherNews.size)
+        assertTrue(report.otherNews.size <= 4)
+        assertTrue(report.companySectorNews.size <= 4)
+        assertEquals(visibleItems.map { it.eventKey() }.size, visibleItems.map { it.eventKey() }.toSet().size)
+        val companyNames = report.companySectorNews
+            .filter { it.type == NewsItemType.COMPANY }
+            .map {
+                it.subjects.first().name.lowercase(Locale.ROOT)
+                    .replace(Regex("[^\\p{L}\\p{N}]+"), " ").trim()
+            }
+        assertEquals(companyNames.size, companyNames.toSet().size)
         assertTrue(report.companySectorNews.isNotEmpty())
         assertTrue(report.regionalNews.values.flatten().none { it.region == Region.GLOBAL })
         assertEquals(21, goldItems.map { it.type to it.region }.toSet().size)
@@ -121,8 +120,7 @@ class CorpusValidationTest {
 
     private fun NewsItem.eventKey(): String = listOf(
         type.name,
-        region.name,
-        subjects.map { it.name.trim().lowercase(Locale.ROOT).replace(Regex("\\s+"), " ") }
+        subjects.map { it.name.trim().lowercase(Locale.ROOT).replace(Regex("[^\\p{L}\\p{N}]+"), " ").trim() }
             .distinct()
             .sorted()
             .joinToString("|"),

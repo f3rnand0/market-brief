@@ -36,7 +36,7 @@ class ReportAssemblerTest {
         val report = ReportAssembler.assemble(date, snapshot, articles, items)
 
         assertEquals(
-            listOf("new-a", "new-b", "fourth", "fifth", "sixth"),
+            listOf("new-a", "new-b", "fourth", "fifth"),
             report.regionalNews[Region.US].orEmpty().map { it.source.articleId },
         )
         assertTrue(report.regionalNews.values.flatten().none { it.region == Region.GLOBAL })
@@ -109,7 +109,7 @@ class ReportAssemblerTest {
     }
 
     @Test
-    fun `company-sector section never exceeds its limit`() {
+    fun `company-sector section never exceeds four items`() {
         val items = buildList {
             repeat(4) { add(item(type = NewsItemType.COMPANY, region = Region.US, subject = "US $it")) }
             repeat(4) { add(item(type = NewsItemType.COMPANY, region = Region.CHINA, subject = "China $it")) }
@@ -118,7 +118,7 @@ class ReportAssemblerTest {
 
         val section = assemble(snapshot, items).companySectorNews
 
-        assertEquals(10, section.size)
+        assertEquals(4, section.size)
     }
 
     @Test
