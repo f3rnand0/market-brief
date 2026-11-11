@@ -16,7 +16,7 @@ internal class CitationMetricsEvaluator(private val claimSupportJudge: ClaimSupp
         val reviewSamples = mutableListOf<CitationReviewSample>()
         results.forEach { (article, extraction) ->
             extraction.items.forEach { item ->
-                val quotesPresent = item.source.quotes.all { quote -> article.contains(quote) }
+                val quotesPresent = item.source.quotes.all(article::containsQuote)
                 if (!quotesPresent) {
                     unsupported++
                     reviewSamples += CitationReviewSample(
@@ -57,11 +57,6 @@ internal class CitationMetricsEvaluator(private val claimSupportJudge: ClaimSupp
             reviewSamples = manualSample,
         )
     }
-
-    private fun Article.contains(quote: String): Boolean = normalize(body).contains(normalize(quote)) ||
-        normalize(headline).contains(normalize(quote))
-
-    private fun normalize(value: String): String = value.trim().lowercase().replace(Regex("\\s+"), " ")
 
     private fun ratio(numerator: Int, denominator: Int): Double =
         if (denominator == 0) 0.0 else numerator.toDouble() / denominator

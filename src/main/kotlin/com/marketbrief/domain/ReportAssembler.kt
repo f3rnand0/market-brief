@@ -103,7 +103,11 @@ object ReportAssembler {
             .filterValues(List<NewsItem>::isNotEmpty)
     }
 
-    private fun NewsItem.eventKey(): String = "${type.name}:${canonicalSubjects().joinToString("|")}"
+    private fun NewsItem.eventKey(): String = listOf(
+        type.name,
+        canonicalSubjects().joinToString("|"),
+        assertion.trim().lowercase(Locale.ROOT).replace(Regex("\\s+"), " "),
+    ).joinToString(":")
 
     private fun NewsItem.canonicalSubjects(): List<String> = subjects
         .map { it.name.canonicalSubject() }
@@ -114,7 +118,6 @@ object ReportAssembler {
         .lowercase(Locale.ROOT)
         .replace(Regex("[^\\p{L}\\p{N}]+"), " ")
         .trim()
-
     private fun otherNewsItems(items: List<NewsItem>): List<NewsItem> = items
         .filter { it.region == Region.GLOBAL && !it.isCompanyOrSector }
         .take(NEWS_ITEMS_PER_GROUP_LIMIT)

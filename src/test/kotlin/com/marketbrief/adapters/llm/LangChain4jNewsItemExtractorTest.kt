@@ -104,7 +104,7 @@ class LangChain4jNewsItemExtractorTest {
                 "region": "ASIA",
                 "subjects": ["Semiconductors"],
                 "assertion": "Chip stocks gained.",
-                "source": {"quotes": ["Chip stocks gained."]}
+                "source": {"quotes": ["The S&P 500 fell 1.2% on Tuesday"]}
               }
             ]}
         """.trimIndent()
@@ -120,6 +120,26 @@ class LangChain4jNewsItemExtractorTest {
     }
 
     @Test
+    fun `drops candidates whose citation quote is absent from the article`() = runBlocking {
+        val content = """
+            {"items": [{
+              "type": "MACRO",
+              "region": "GLOBAL",
+              "subjects": ["Rates"],
+              "assertion": "Rates rose sharply.",
+              "source": {"quotes": ["Fabricated quote about rates"]}
+            }]}
+        """.trimIndent()
+
+        StubChatServer(content).use { server ->
+            val extractor = extractor(server)
+
+            assertTrue(extractor.extract(article).items.isEmpty())
+            assertEquals(1, extractor.droppedCandidateCount)
+        }
+    }
+
+    @Test
     fun `accepts missing optional fields and maps nested citation`() = runBlocking {
         val content = """
             {"items": [{
@@ -127,7 +147,7 @@ class LangChain4jNewsItemExtractorTest {
               "region": "GLOBAL",
               "subjects": ["Rates"],
               "assertion": "Bond yields increased.",
-              "source": {"quotes": ["Bond yields increased."]}
+              "source": {"quotes": ["The S&P 500 fell 1.2% on Tuesday"]}
             }]}
         """.trimIndent()
 
@@ -138,7 +158,7 @@ class LangChain4jNewsItemExtractorTest {
             assertEquals(null, item.cause)
             assertTrue(item.metrics.isEmpty())
             assertEquals("a1", item.source.articleId)
-            assertEquals(listOf("Bond yields increased."), item.source.quotes)
+            assertEquals(listOf("The S&P 500 fell 1.2% on Tuesday"), item.source.quotes)
         }
     }
 
