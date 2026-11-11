@@ -201,7 +201,8 @@ listed separately from production wiring:
 `CnbcQuoteFetcher` implement it; only the composite implements the domain port.
 
 The LangChain4j adapter implements `NewsItemExtractor`; the completed
-structured-output investigation is summarized in [the spike](spike-langchain4j.md).
+structured-output model comparison is documented in
+[the Gold-set model comparison](langchain4j-gold-set-model-comparison.md).
 
 ---
 
@@ -339,8 +340,10 @@ the configured extraction model, so the sample remains important.
 coordinates these collaborators and persists the report.
 
 Input and output token rates in `config/application.yml` produce estimated cost
-in USD. If usage or rates are unavailable, the report sets `cost.available` to
-`0.0` and omits the cost amounts.
+in USD for the configured model. The estimate uses the catalog's standard
+rates; it does not account for cached-input discounts or time-based pricing
+multipliers. If usage or rates are unavailable, the report sets
+`cost.available` to `0.0` and omits the cost amounts.
 
 `JsonEvalStore` writes versioned JSON and Markdown files; the HTTP API exposes
 the JSON report.
