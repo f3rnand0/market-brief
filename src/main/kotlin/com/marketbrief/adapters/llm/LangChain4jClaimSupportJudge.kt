@@ -10,12 +10,10 @@ import dev.langchain4j.exception.LangChain4jException
 import dev.langchain4j.model.chat.ChatModel
 import dev.langchain4j.model.chat.request.ChatRequest
 import dev.langchain4j.model.chat.request.ResponseFormat
-import dev.langchain4j.model.openai.OpenAiChatModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.future.await
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import java.time.Duration
 
 class LangChain4jClaimSupportJudge(
     private val chatModel: ChatModel,
@@ -63,13 +61,7 @@ class LangChain4jClaimSupportJudge(
 
     companion object {
         fun fromConfig(config: OpenAiCompatibleConfig): LangChain4jClaimSupportJudge {
-            val chatModel = OpenAiChatModel.builder()
-                .baseUrl(config.baseUrl)
-                .apiKey(config.apiKey)
-                .modelName(config.model)
-                .timeout(Duration.ofSeconds(config.requestTimeoutSeconds))
-                .maxRetries(config.maxRetries)
-                .build()
+            val chatModel = OpenAiChatModelFactory.create(config)
             return LangChain4jClaimSupportJudge(
                 chatModel = chatModel,
                 inputCostPerMillionUsd = config.inputCostPerMillionUsd,

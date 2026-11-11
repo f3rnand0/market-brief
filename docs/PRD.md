@@ -53,11 +53,16 @@ polish.
    (`4.995 (+0.9 bp, +0.18%)`); other asset classes show the percentage change.
    Fully structured, sourced from the market-data API (no LLM).
 3. **Regional news** — the most relevant market news per region: US, China,
-   Europe, Latam, Asia.
+   Europe, Latam, Asia, with at most four items per region.
 4. **Company / sector news** — the most relevant news about the biggest
-   companies and sectors, balanced across US / China / Global (not US-only).
+   companies and sectors, up to four items balanced across US / China / Global
+   (not US-only). A company appears at most once in this section.
    Each `NewsItem` appears in exactly one section: company and sector items
    are never duplicated into the regional sections.
+
+Global macro and market news in the other-news section is capped at four items.
+Duplicate news items with the same type and subjects are removed across the
+report before section selection.
 
 ## 6. Information integrity
 

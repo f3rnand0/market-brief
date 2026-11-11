@@ -145,10 +145,13 @@ Section assembly follows these rules:
   renders "No major index moves.".
 - Global `MACRO` and `MARKET_MOVE` items go to `Report.otherNews`.
 - `COMPANY` and `SECTOR` items go only to the company/sector section. Items are
-  balanced round-robin across US, China, and Global, up to ten items.
+  balanced round-robin across US, China, and Global, up to four items. A
+  company subject appears at most once in this section.
 - Other regional items exclude Global and company/sector items. They are sorted
-  by publication date, then outlet and Article ID. Duplicate events are
-  removed; each region has a five-item limit and a two-item-per-outlet limit.
+  by publication date, then outlet and Article ID. Before section selection,
+  duplicate items with the same type and normalized subjects are removed across
+  the report. Each region and the global other-news section has a four-item
+  limit; regional sections also keep a two-item-per-outlet limit.
 
 ### 2.5 Ports (interfaces owned by the domain)
 
@@ -266,7 +269,8 @@ Concrete adapters implementing the domain ports.
   but does not establish that the full story was captured. Individual page and
   feed failures are logged. A failed feed or source is tolerated when another
   succeeds; if all fail, `NewsFeedUnavailableException` fails report
-  generation. A successful empty feed is a valid empty result. `NewsSource.fetch`
+  generation. A GDELT HTTP 429 is retried once after one second. A successful
+  empty feed is a valid empty result. `NewsSource.fetch`
   is synchronous, so the HTTP adapters use `runBlocking`. Evaluation instead
   uses `JsonCorpusNewsSource` to resolve Gold-set Article IDs.
 - **`LangChain4jNewsItemExtractor`** — the LLM adapter. It uses one
@@ -275,6 +279,8 @@ Concrete adapters implementing the domain ports.
   citation's `articleId`; the model supplies quote spans. Candidates that fail
   domain invariants are dropped and counted as `droppedCandidateCount`. The
   adapter returns token usage and estimated cost when rates are configured.
+  OpenCode endpoints receive the provider-required `User-Agent` and
+  `x-opencode-session` headers; other providers receive no extra headers.
   Its async chat call suspends without blocking a thread. Provider and transport
   failures propagate; empty or malformed content yields no items for that
   Article.

@@ -7,6 +7,7 @@ import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.jsoup.Jsoup
@@ -80,7 +81,7 @@ class GdeltNewsSource(
 
     override fun fetch(window: DayWindow): List<Article> = runBlocking {
         val candidates = try {
-            RssParser.parse(client.get(endpoint).successfulBody())
+            RssParser.parse(fetchFeed())
                 .filter { it.publishedAt == window.date }.distinctBy { it.url }
         } catch (e: CancellationException) {
             throw e
@@ -98,6 +99,16 @@ class GdeltNewsSource(
                 null
             }
         }
+    }
+
+    private suspend fun fetchFeed(): String {
+        val response = client.get(endpoint)
+        if (response.status.value == 429) {
+            delay(1_000)
+            val retry = client.get(endpoint)
+            return retry.successfulBody()
+        }
+        return response.successfulBody()
     }
 
     companion object {

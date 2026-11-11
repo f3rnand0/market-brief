@@ -6,21 +6,36 @@ import java.util.Locale
 object ReportAssembler {
 
     private val REGIONAL_SECTIONS = Region.entries.filter { it != Region.GLOBAL }
-    private const val COMPANY_SECTOR_LIMIT = 10
-    private const val REGIONAL_ITEM_LIMIT = 5
+    private const val NEWS_ITEMS_PER_GROUP_LIMIT = 4
     private const val REGIONAL_OUTLET_LIMIT = 2
 
     private val NewsItem.isCompanyOrSector: Boolean
         get() = type == NewsItemType.COMPANY || type == NewsItemType.SECTOR
 
-    fun assemble(date: LocalDate, snapshot: Snapshot, articles: List<Article>, items: List<NewsItem>): Report = Report(
-        date = date,
-        summary = buildSummary(snapshot, items),
-        snapshot = snapshot,
-        regionalNews = regionalSections(articles, items),
-        companySectorNews = balancedCompanySector(items),
-        otherNews = otherNewsItems(items),
-    )
+    fun assemble(date: LocalDate, snapshot: Snapshot, articles: List<Article>, items: List<NewsItem>): Report {
+        val deduplicatedItems = deduplicateItems(articles, items)
+        return Report(
+            date = date,
+            summary = buildSummary(snapshot, items),
+            snapshot = snapshot,
+            regionalNews = regionalSections(articles, deduplicatedItems),
+            companySectorNews = balancedCompanySector(deduplicatedItems),
+            otherNews = otherNewsItems(deduplicatedItems),
+        )
+    }
+
+    private fun deduplicateItems(articles: List<Article>, items: List<NewsItem>): List<NewsItem> {
+        val articlesById = articles.associateBy(Article::id)
+        val seenEvents = mutableSetOf<String>()
+        return items
+            .sortedWith(
+                compareByDescending<NewsItem> { articlesById[it.source.articleId]?.publishedAt }
+                    .thenBy { articlesById[it.source.articleId]?.outlet.orEmpty() }
+                    .thenBy { it.source.articleId }
+                    .thenBy { it.assertion },
+            )
+            .filter { seenEvents.add(it.eventKey()) }
+    }
 
     private fun buildSummary(snapshot: Snapshot, items: List<NewsItem>): String {
         val quotes = snapshot.quotes.associateBy { it.instrument }
@@ -67,7 +82,6 @@ object ReportAssembler {
             .groupBy { it.region }
             .mapValues { (_, regionalItems) ->
                 val outlets = mutableMapOf<String, Int>()
-                val eventKeys = mutableSetOf<String>()
                 regionalItems
                     .sortedWith(
                         compareByDescending<NewsItem> { articlesById[it.source.articleId]?.publishedAt }
@@ -77,31 +91,33 @@ object ReportAssembler {
                     .filter { item ->
                         val article = articlesById[item.source.articleId]
                         val outlet = article?.outlet ?: item.source.articleId
-                        val eventKey = item.eventKey()
-                        if (eventKey in eventKeys || (outlets[outlet] ?: 0) >= REGIONAL_OUTLET_LIMIT) {
+                        if ((outlets[outlet] ?: 0) >= REGIONAL_OUTLET_LIMIT) {
                             false
                         } else {
-                            eventKeys += eventKey
                             outlets[outlet] = (outlets[outlet] ?: 0) + 1
                             true
                         }
                     }
-                    .take(REGIONAL_ITEM_LIMIT)
+                    .take(NEWS_ITEMS_PER_GROUP_LIMIT)
             }
             .filterValues(List<NewsItem>::isNotEmpty)
     }
 
-    private fun NewsItem.eventKey(): String = listOf(
-        type.name,
-        region.name,
-        subjects.map { it.name.trim().lowercase(Locale.ROOT).replace(Regex("\\s+"), " ") }
-            .distinct()
-            .sorted()
-            .joinToString("|"),
-    ).joinToString(":")
+    private fun NewsItem.eventKey(): String = "${type.name}:${canonicalSubjects().joinToString("|")}"
+
+    private fun NewsItem.canonicalSubjects(): List<String> = subjects
+        .map { it.name.canonicalSubject() }
+        .distinct()
+        .sorted()
+
+    private fun String.canonicalSubject(): String = trim()
+        .lowercase(Locale.ROOT)
+        .replace(Regex("[^\\p{L}\\p{N}]+"), " ")
+        .trim()
 
     private fun otherNewsItems(items: List<NewsItem>): List<NewsItem> = items
         .filter { it.region == Region.GLOBAL && !it.isCompanyOrSector }
+        .take(NEWS_ITEMS_PER_GROUP_LIMIT)
 
     private fun balancedCompanySector(items: List<NewsItem>): List<NewsItem> {
         fun bucketOf(item: NewsItem) = when (item.region) {
@@ -110,14 +126,24 @@ object ReportAssembler {
             else -> 2 // Global bucket: Europe, Latam, Asia, Global
         }
         val buckets = Array(3) { ArrayDeque<NewsItem>() }
+        val companies = mutableSetOf<String>()
         items
             .filter { it.isCompanyOrSector }
-            .forEach { buckets[bucketOf(it)].add(it) }
+            .forEach { item ->
+                val primaryCompany = if (item.type == NewsItemType.COMPANY) {
+                    item.subjects.firstOrNull()?.name?.canonicalSubject()
+                } else {
+                    null
+                }
+                if (primaryCompany == null || companies.add(primaryCompany)) {
+                    buckets[bucketOf(item)].add(item)
+                }
+            }
 
         val result = mutableListOf<NewsItem>()
-        while (result.size < COMPANY_SECTOR_LIMIT && buckets.any { it.isNotEmpty() }) {
+        while (result.size < NEWS_ITEMS_PER_GROUP_LIMIT && buckets.any { it.isNotEmpty() }) {
             for (bucket in buckets) {
-                if (result.size == COMPANY_SECTOR_LIMIT) break
+                if (result.size == NEWS_ITEMS_PER_GROUP_LIMIT) break
                 bucket.removeFirstOrNull()?.let(result::add)
             }
         }

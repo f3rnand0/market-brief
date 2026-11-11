@@ -16,13 +16,11 @@ import dev.langchain4j.exception.LangChain4jException
 import dev.langchain4j.model.chat.ChatModel
 import dev.langchain4j.model.chat.request.ChatRequest
 import dev.langchain4j.model.chat.request.ResponseFormat
-import dev.langchain4j.model.openai.OpenAiChatModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.future.await
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
-import java.time.Duration
 import java.util.concurrent.atomic.AtomicLong
 
 class LangChain4jNewsItemExtractor(
@@ -105,13 +103,7 @@ class LangChain4jNewsItemExtractor(
 
     companion object {
         fun fromConfig(config: OpenAiCompatibleConfig): LangChain4jNewsItemExtractor {
-            val chatModel = OpenAiChatModel.builder()
-                .baseUrl(config.baseUrl)
-                .apiKey(config.apiKey)
-                .modelName(config.model)
-                .timeout(Duration.ofSeconds(config.requestTimeoutSeconds))
-                .maxRetries(config.maxRetries)
-                .build()
+            val chatModel = OpenAiChatModelFactory.create(config)
             return LangChain4jNewsItemExtractor(
                 chatModel = chatModel,
                 inputCostPerMillionUsd = config.inputCostPerMillionUsd,
