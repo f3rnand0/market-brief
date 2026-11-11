@@ -86,8 +86,8 @@ class ApplicationConfigLoaderTest {
         assertEquals("https://opencode.ai/inference/go/openai/v1", config.llm.baseUrl)
         assertEquals("deepseek-v4.1-flash", config.llm.model)
         assertEquals("OPENCODE_API_KEY", config.llm.apiKeyEnv)
-        assertEquals(null, config.llm.inputCostPerMillionUsd)
-        assertEquals(null, config.llm.outputCostPerMillionUsd)
+        assertEquals(0.15, config.llm.inputCostPerMillionUsd)
+        assertEquals(0.60, config.llm.outputCostPerMillionUsd)
     }
 
     @Test

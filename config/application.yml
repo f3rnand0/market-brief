@@ -4,6 +4,8 @@ llm:
   apiKeyEnv: OPENCODE_API_KEY
   requestTimeoutSeconds: 120
   maxRetries: 2
+  inputCostPerMillionUsd: 0.15
+  outputCostPerMillionUsd: 0.60
 
 storage:
   reportsDir: data/reports
