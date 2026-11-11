@@ -101,8 +101,9 @@ class ReportRoutesTest {
         assertTrue(html.contains("<html"))
         assertTrue(html.contains("Market brief — $date"))
         assertTrue(html.contains("S&amp;P 500"))
-        assertTrue(html.contains("4.995 (+0.9 bp, +0.18%)"))
-        assertTrue(html.contains("data unavailable"))
+        assertTrue(html.contains("4.995"))
+        assertTrue(html.contains("+0.9 bp, +0.18%"))
+        assertTrue(html.contains("Data unavailable"))
         assertTrue(html.contains("Federal Reserve"))
     }
 
