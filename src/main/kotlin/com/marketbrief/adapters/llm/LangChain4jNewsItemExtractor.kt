@@ -88,6 +88,7 @@ class LangChain4jNewsItemExtractor(
             source = Source(
                 articleId = article.id,
                 quotes = quotes,
+                articleUrl = article.url,
             ),
         )
     } catch (e: IllegalArgumentException) {

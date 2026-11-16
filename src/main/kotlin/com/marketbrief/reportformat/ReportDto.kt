@@ -5,6 +5,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class ReportDto(
     val date: String,
+    val generatedAt: String = "",
     val summary: String,
     val snapshot: List<SnapshotGroupDto>,
     val regionalNews: Map<String, List<NewsItemDto>>,
@@ -45,7 +46,7 @@ data class NewsItemDto(
 data class MetricDto(val value: String, val unit: String)
 
 @Serializable
-data class SourceDto(val articleId: String, val quotes: List<String>)
+data class SourceDto(val articleId: String, val quotes: List<String>, val articleUrl: String = "")
 
 @Serializable
 data class ErrorDto(val error: String)

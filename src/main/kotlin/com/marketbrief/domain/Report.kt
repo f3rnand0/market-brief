@@ -1,5 +1,6 @@
 package com.marketbrief.domain
 
+import java.time.Instant
 import java.time.LocalDate
 
 data class Report(
@@ -9,4 +10,5 @@ data class Report(
     val regionalNews: Map<Region, List<NewsItem>>,
     val companySectorNews: List<NewsItem>,
     val otherNews: List<NewsItem>,
+    val generatedAt: Instant? = null,
 )

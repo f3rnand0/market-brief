@@ -15,6 +15,7 @@ import com.marketbrief.domain.Subject
 import kotlinx.serialization.json.Json
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.time.Instant
 import java.time.LocalDate
 
 object ReportMapper {
@@ -30,6 +31,7 @@ object ReportMapper {
 
     fun toDto(report: Report): ReportDto = ReportDto(
         date = report.date.toString(),
+        generatedAt = report.generatedAt?.toString().orEmpty(),
         summary = report.summary,
         snapshot = snapshotGroups(report.snapshot),
         regionalNews = regionalNews(report.regionalNews),
@@ -39,6 +41,7 @@ object ReportMapper {
 
     fun toDomain(dto: ReportDto): Report = Report(
         date = LocalDate.parse(dto.date),
+        generatedAt = dto.generatedAt.takeIf(String::isNotBlank)?.let(Instant::parse),
         summary = dto.summary,
         snapshot = Snapshot(
             quotes = dto.snapshot.flatMap { group ->
@@ -109,7 +112,7 @@ object ReportMapper {
         direction = item.direction?.name,
         cause = item.cause,
         metrics = item.metrics.map { MetricDto(it.value, it.unit) },
-        source = SourceDto(item.source.articleId, item.source.quotes),
+        source = SourceDto(item.source.articleId, item.source.quotes, item.source.articleUrl),
     )
 
     private fun toDomain(item: NewsItemDto): NewsItem = NewsItem(
@@ -120,7 +123,7 @@ object ReportMapper {
         direction = item.direction?.let(Direction::valueOf),
         cause = item.cause,
         metrics = item.metrics.map { Metric(it.value, it.unit) },
-        source = Source(item.source.articleId, item.source.quotes),
+        source = Source(item.source.articleId, item.source.quotes, item.source.articleUrl),
     )
 
     private fun percent(value: BigDecimal): String = signed(value.setScale(2, RoundingMode.HALF_UP))

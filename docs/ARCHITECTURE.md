@@ -109,11 +109,17 @@ requested set.
   `Snapshot` plus the extracted `NewsItem`s. Each `NewsItem` appears once:
   `COMPANY` and `SECTOR` items go to the company/sector section, never the
   regional sections. The summary section also carries `otherNews` for GLOBAL
-  `MACRO` and `MARKET_MOVE` items that belong to no continent.
+  `MACRO` and `MARKET_MOVE` items that belong to no continent. It records the
+  generation instant alongside the report date.
 
 **`Article`** is the input aggregate: headline, publisher-page text in `body`,
 `outlet`, URL, and publication date. A headline or RSS teaser alone is not an
 eligible live `Article`.
+
+The report assembler preserves each cited Article URL with its `Source`, so the
+HTML citation opens the publisher page directly. HTML provenance shows the
+generation instant and the number of distinct cited Articles represented in
+the report; it does not count Articles that produced no selected `NewsItem`.
 
 ### 2.2 Two kinds of numbers
 

@@ -82,14 +82,14 @@ class ReportAssemblerTest {
 
         val report = assemble(snapshot, listOf(company, sector, macro))
 
-        assertEquals(listOf(macro), report.regionalNews[Region.US])
+        assertEquals(listOf(macro.withPublisherUrl()), report.regionalNews[Region.US])
         assertTrue(
             report.regionalNews.values.flatten().none {
                 it.type == NewsItemType.COMPANY || it.type == NewsItemType.SECTOR
             },
             "company and sector items must not be duplicated into regional sections",
         )
-        assertEquals(listOf(company, sector), report.companySectorNews)
+        assertEquals(listOf(company, sector).map { it.withPublisherUrl() }, report.companySectorNews)
     }
 
     @Test
@@ -224,7 +224,7 @@ class ReportAssemblerTest {
 
         val report = assemble(snapshot, listOf(macro, move))
 
-        assertEquals(listOf(macro, move), report.otherNews)
+        assertEquals(listOf(macro, move).map { it.withPublisherUrl() }, report.otherNews)
         assertTrue(report.regionalNews.isEmpty())
         assertTrue(report.companySectorNews.isEmpty())
     }
@@ -235,7 +235,7 @@ class ReportAssemblerTest {
 
         val report = assemble(snapshot, listOf(company))
 
-        assertEquals(listOf(company), report.companySectorNews)
+        assertEquals(listOf(company.withPublisherUrl()), report.companySectorNews)
         assertTrue(report.otherNews.isEmpty())
     }
 
@@ -264,6 +264,10 @@ class ReportAssemblerTest {
 
     private fun NewsItem.from(articleId: String) = copy(
         source = Source(articleId, source.quotes),
+    )
+
+    private fun NewsItem.withPublisherUrl() = copy(
+        source = source.copy(articleUrl = "https://example.com/${source.articleId}"),
     )
 
     private fun indexSnapshot() = Snapshot(
