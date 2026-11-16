@@ -16,8 +16,11 @@ object ReportAssembler {
         val articlesById = articles.associateBy(Article::id)
         val citedItems = items.map { item ->
             val article = articlesById[item.source.articleId]
-            if (article == null || item.source.articleUrl.isNotBlank()) item
-            else item.copy(source = item.source.copy(articleUrl = article.url))
+            if (article == null || item.source.articleUrl.isNotBlank()) {
+                item
+            } else {
+                item.copy(source = item.source.copy(articleUrl = article.url))
+            }
         }
         val deduplicatedItems = deduplicateItems(articles, citedItems)
         return Report(

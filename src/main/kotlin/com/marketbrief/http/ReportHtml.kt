@@ -28,8 +28,8 @@ import kotlinx.html.span
 import kotlinx.html.stream.createHTML
 import kotlinx.html.style
 import kotlinx.html.summary
-import kotlinx.html.title
 import kotlinx.html.time
+import kotlinx.html.title
 import kotlinx.html.ul
 import kotlinx.html.unsafe
 
@@ -76,7 +76,9 @@ object ReportHtml {
                             if (report.generatedAt.isNotBlank()) attributes["datetime"] = report.generatedAt
                             +report.generatedAt.ifBlank { "Generation time unavailable" }
                         }
-                        span { +" · Source coverage: $sourceCount cited ${if (sourceCount == 1) "article" else "articles"}" }
+                        span {
+                            +" · Source coverage: $sourceCount cited ${if (sourceCount == 1) "article" else "articles"}"
+                        }
                     }
                     main {
                         div("dashboard") {
