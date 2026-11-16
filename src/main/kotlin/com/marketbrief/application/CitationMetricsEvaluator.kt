@@ -6,6 +6,7 @@ import com.marketbrief.domain.ClaimSupportContext
 import com.marketbrief.domain.ClaimSupportJudge
 import com.marketbrief.domain.ExtractionUsage
 import com.marketbrief.domain.NewsItemExtraction
+import org.slf4j.LoggerFactory
 
 internal class CitationMetricsEvaluator(private val claimSupportJudge: ClaimSupportJudge) {
     suspend fun evaluate(results: List<Pair<Article, NewsItemExtraction>>): CitationMetrics {
@@ -15,10 +16,14 @@ internal class CitationMetricsEvaluator(private val claimSupportJudge: ClaimSupp
         var indeterminate = 0
         val judgeUsages = mutableListOf<ExtractionUsage?>()
         val reviewSamples = mutableListOf<CitationReviewSample>()
+        val totalItems = results.sumOf { it.second.items.size }
+        var itemIndex = 0
         results.forEach { (article, extraction) ->
             extraction.items.forEach { item ->
+                itemIndex++
                 val quotesPresent = item.source.quotes.all(article::containsQuote)
                 if (!quotesPresent) {
+                    log.info("Citation check {}/{}: {} quote missing", itemIndex, totalItems, article.id)
                     unsupported++
                     reviewSamples += CitationReviewSample(
                         article.id,
@@ -31,9 +36,19 @@ internal class CitationMetricsEvaluator(private val claimSupportJudge: ClaimSupp
                     )
                 } else {
                     quotePresent++
+                    log.info("Judging citation {}/{} for Article {}", itemIndex, totalItems, article.id)
+                    val startedAt = System.nanoTime()
                     val judgment = claimSupportJudge.judge(
                         item,
                         ClaimSupportContext(article.headline, relevantContext(article, item.source.quotes)),
+                    )
+                    log.info(
+                        "Judged citation {}/{} for Article {}: {} elapsedMs={}",
+                        itemIndex,
+                        totalItems,
+                        article.id,
+                        judgment.support,
+                        (System.nanoTime() - startedAt) / NANOS_PER_MILLI,
                     )
                     judgeUsages += judgment.usage
                     reviewSamples += CitationReviewSample(
@@ -81,6 +96,8 @@ internal class CitationMetricsEvaluator(private val claimSupportJudge: ClaimSupp
         const val MANUAL_REVIEW_PER_OUTCOME = 2
         const val CONTEXT_CHARS = 350
         const val MAX_CONTEXT_CHARS = 1_200
+        const val NANOS_PER_MILLI = 1_000_000
+        val log = LoggerFactory.getLogger(CitationMetricsEvaluator::class.java)
     }
 
     private fun relevantContext(article: Article, quotes: List<String>): String {
