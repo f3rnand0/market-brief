@@ -29,6 +29,7 @@ import kotlinx.html.stream.createHTML
 import kotlinx.html.style
 import kotlinx.html.summary
 import kotlinx.html.title
+import kotlinx.html.time
 import kotlinx.html.ul
 import kotlinx.html.unsafe
 
@@ -36,6 +37,10 @@ object ReportHtml {
 
     fun render(report: ReportDto): String {
         val indexQuotes = indexBoard(report.snapshot)
+        val sourceCount = (report.regionalNews.values.flatten() + report.companySectorNews + report.otherNews)
+            .map { it.source.articleId }
+            .distinct()
+            .size
         return createHTML().html {
             lang = "en"
             head {
@@ -64,6 +69,14 @@ object ReportHtml {
                         a("#regional-desk") { +"Regional desks" }
                         a("#company-watch") { +"Company watch" }
                         a("#cross-asset") { +"Cross-asset" }
+                    }
+                    div("report-provenance") {
+                        span { +"Generated " }
+                        time {
+                            if (report.generatedAt.isNotBlank()) attributes["datetime"] = report.generatedAt
+                            +report.generatedAt.ifBlank { "Generation time unavailable" }
+                        }
+                        span { +" · Source coverage: $sourceCount cited ${if (sourceCount == 1) "article" else "articles"}" }
                     }
                     main {
                         div("dashboard") {
@@ -223,7 +236,17 @@ object ReportHtml {
                                 }
                             }
                             details("citation") {
-                                summary { +"Open citation · ${item.source.articleId}" }
+                                summary {
+                                    if (item.source.articleUrl.isNotBlank()) {
+                                        a(item.source.articleUrl) {
+                                            attributes["target"] = "_blank"
+                                            attributes["rel"] = "noopener noreferrer"
+                                            +"Read at publisher · ${item.source.articleId}"
+                                        }
+                                    } else {
+                                        +"Citation · ${item.source.articleId}"
+                                    }
+                                }
                                 item.source.quotes.forEach { quote -> p("citation-quote") { +quote } }
                             }
                         }
@@ -310,6 +333,9 @@ object ReportHtml {
             border-bottom: 1px solid var(--line); }
         .report-nav a { color: var(--blue); font-size: 12px; font-weight: 600; text-decoration: none; }
         .report-nav a:hover { text-decoration: underline; }
+        .report-provenance { display: flex; flex-wrap: wrap; gap: 4px; padding: 9px 0 0;
+            color: var(--muted); font-size: 11px; }
+        .report-provenance time { font-variant-numeric: tabular-nums; }
         main { padding-top: 20px; }
         .dashboard { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 20px; align-items: stretch; }
         .index-rail { padding: 15px; background: var(--paper); border-left: 3px solid var(--orange); border-radius: 12px; }
@@ -363,6 +389,7 @@ object ReportHtml {
             font-size: 11px; font-variant-numeric: tabular-nums; }
         .citation { margin-top: 7px; color: var(--muted); font-size: 11px; }
         .citation summary { color: var(--blue); cursor: pointer; }
+        .citation summary a { color: inherit; }
         .citation-quote { margin: 7px 0 0; padding-left: 10px; border-left: 2px solid var(--purple); }
         .asset-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 11px; }
         .asset-class { min-width: 0; padding: 12px 14px; background: var(--paper); border-radius: 10px;

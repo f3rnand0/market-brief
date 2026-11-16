@@ -39,6 +39,8 @@ polish.
 
 - A structured **report** as JSON (the source of truth, and what evals score).
 - A rendered **HTML page** (kotlinx.html) presenting the four sections.
+- HTML citations link directly to the publisher Article page. The page shows
+  when the report was generated and how many distinct cited Articles it covers.
 - Email delivery is out of scope for v1.
 
 ### 5.1 The four sections

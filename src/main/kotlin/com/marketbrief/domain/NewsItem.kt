@@ -21,7 +21,7 @@ data class Metric(val value: String, val unit: String) {
     }
 }
 
-data class Source(val articleId: String, val quotes: List<String>) {
+data class Source(val articleId: String, val quotes: List<String>, val articleUrl: String = "") {
     init {
         require(articleId.isNotBlank()) { "Source articleId must not be blank" }
         require(quotes.isNotEmpty()) { "Source must cite at least one quote span" }

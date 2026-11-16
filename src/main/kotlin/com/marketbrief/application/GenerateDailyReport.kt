@@ -58,7 +58,7 @@ class GenerateDailyReport(
             .map { article -> async { permits.withPermit { extractor.extract(article) } } }
             .awaitAll()
             .flatMap { it.items }
-        val report = ReportAssembler.assemble(date, snapshot, articles, items)
+        val report = ReportAssembler.assemble(date, snapshot, articles, items).copy(generatedAt = clock.instant())
         reportStore.save(report)
         report
     }

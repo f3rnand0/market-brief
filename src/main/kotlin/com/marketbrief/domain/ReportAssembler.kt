@@ -13,7 +13,13 @@ object ReportAssembler {
         get() = type == NewsItemType.COMPANY || type == NewsItemType.SECTOR
 
     fun assemble(date: LocalDate, snapshot: Snapshot, articles: List<Article>, items: List<NewsItem>): Report {
-        val deduplicatedItems = deduplicateItems(articles, items)
+        val articlesById = articles.associateBy(Article::id)
+        val citedItems = items.map { item ->
+            val article = articlesById[item.source.articleId]
+            if (article == null || item.source.articleUrl.isNotBlank()) item
+            else item.copy(source = item.source.copy(articleUrl = article.url))
+        }
+        val deduplicatedItems = deduplicateItems(articles, citedItems)
         return Report(
             date = date,
             summary = buildSummary(snapshot, items),
