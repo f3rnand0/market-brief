@@ -172,7 +172,7 @@ interface NewsItemExtractor {              // the LLM seam (LangChain4j)
 }
 
 interface ClaimSupportJudge {                // citation-support evaluation
-    suspend fun judge(item: NewsItem): ClaimSupportJudgment
+    suspend fun judge(item: NewsItem, context: ClaimSupportContext): ClaimSupportJudgment
 }
 
 interface ReportStore {                    // persist / load reports
@@ -286,7 +286,8 @@ Concrete adapters implementing the domain ports.
   failures propagate; empty or malformed content yields no items for that
   Article.
 - **`LangChain4jClaimSupportJudge`** — checks whether the exact `Source` quote
-  spans support a `NewsItem` assertion. It uses the configured OpenAI-compatible
+  spans support a `NewsItem` assertion, with headline and relevant surrounding
+  Article text as context. It uses the configured OpenAI-compatible
   model and returns `SUPPORTED`, `UNSUPPORTED`, or `INDETERMINATE`. Missing quote
   spans are caught independently before calling the judge. The eval Markdown
   report includes a deterministic sample for manual review.
@@ -324,21 +325,36 @@ report returns `404` with a JSON error.
 
 ## 6. Evaluation pipeline
 
-The current Gold set has expected `NewsItem`s for 32 packaged Articles.
+The current Gold set has expected `NewsItem`s for 32 packaged Articles. Its
+version identifier is read from
+[`src/main/resources/gold/version.txt`](../src/main/resources/gold/version.txt)
+and included with the Article IDs in every Eval report. Advance that identifier
+when Gold labels or Article membership changes so reports identify the exact
+reference set they scored.
+
 Snapshot values are tested separately with recorded market-data fixtures; they
-are not inputs to `RunEval`. `RunEval` computes exact item precision/recall,
-field-level precision/recall, citation quote presence, semantic citation
-support, missing-item rate, token usage, and estimated cost. Exact item matches
-are one-to-one. Field-level matches use a maximum-weight one-to-one assignment
-among pairs with at least one shared subject. A zero denominator produces
-`0.0`, not a perfect score.
+are not inputs to `RunEval`. `RunEval` reports the Gold version and Article IDs
+alongside exact item precision/recall, normalized reviewed-match
+precision/recall, field-level precision/recall, citation quote presence,
+semantic citation support, false-positive/false-negative details, token usage,
+and estimated cost. Exact matches require all claim fields and are one-to-one.
+Reviewed matches also require type, region, subjects, direction, cause, and
+metrics to match, and normalize assertion case and punctuation; they do not
+establish semantic equivalence. Field-level matches use a maximum-weight
+one-to-one assignment among pairs with at least one shared subject. A zero
+denominator produces `0.0`, not a perfect score.
 
 `RunEval` checks every `Source` quote for literal presence in the Article's
 headline or body. It marks missing quotes as unsupported without asking the
 judge. For present quotes, `LangChain4jClaimSupportJudge` returns a support
-verdict; an unreadable verdict is indeterminate. The Markdown report includes
-up to five deterministic citation decisions for manual review. The judge uses
-the configured extraction model, so the sample remains important.
+verdict; an unreadable verdict is indeterminate. The Markdown report includes a
+deterministic sample across judge outcomes and missing-quote cases, with the
+assertion, quotes, headline, and surrounding text. Quote presence is a literal
+match and does not establish support. Model verdicts are estimates, not proof
+of correctness. Production configuration uses a separate `minimax-m3` judge
+and `deepseek-v4.1-flash` extractor. They share the configured provider endpoint
+and API key, so model identity is separated but provider independence is not.
+
 
 `NewsItemMetricsEvaluator` owns exact and field-level matching,
 `CitationMetricsEvaluator` owns quote checks and semantic support scoring, and

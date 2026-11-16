@@ -12,6 +12,9 @@ internal class NewsItemMetricsEvaluator {
         val exactMatches = results.sumOf { (article, extraction) ->
             countOneToOneExactMatches(extraction.items, goldSet.expectedFor(article.id))
         }
+        val reviewedMatches = results.sumOf { (article, extraction) ->
+            countOneToOneReviewedMatches(extraction.items, goldSet.expectedFor(article.id))
+        }
         val fieldMatches = results.sumOf { (article, extraction) ->
             countOneToOneFieldMatches(extraction.items, goldSet.expectedFor(article.id))
         }
@@ -22,14 +25,57 @@ internal class NewsItemMetricsEvaluator {
                 "accuracy.recall" to ratio(fieldMatches, expected.size * FIELD_COUNT),
                 "precision" to ratio(exactMatches, predicted.size),
                 "recall" to ratio(exactMatches, expected.size),
+                "reviewedMatch.precision" to ratio(reviewedMatches, predicted.size),
+                "reviewedMatch.recall" to ratio(reviewedMatches, expected.size),
                 "missingValues" to ratio(missing, expected.size),
                 "predictedItems" to predicted.size.toDouble(),
                 "expectedItems" to expected.size.toDouble(),
                 "missingCount" to missing.toDouble(),
             ),
             predictedCount = predicted.size,
+            falsePositives = results.flatMap { (article, extraction) ->
+                unmatchedItems(extraction.items, goldSet.expectedFor(article.id)).map { article.id to it }
+            },
+            falseNegatives = results.flatMap { (article, extraction) ->
+                unmatchedItems(goldSet.expectedFor(article.id), extraction.items).map { article.id to it }
+            },
         )
     }
+
+    private fun countOneToOneReviewedMatches(predicted: List<NewsItem>, expected: List<NewsItem>): Int {
+        val unmatched = expected.toMutableList()
+        return predicted.count { item ->
+            val index = unmatched.indexOfFirst { gold -> item.reviewedClaimMatches(gold) }
+            if (index < 0) {
+                false
+            } else {
+                unmatched.removeAt(index)
+                true
+            }
+        }
+    }
+
+    private fun unmatchedItems(items: List<NewsItem>, candidates: List<NewsItem>): List<NewsItem> {
+        val remaining = candidates.toMutableList()
+        return items.filter { item ->
+            val index = remaining.indexOfFirst { item.reviewedClaimMatches(it) }
+            if (index < 0) {
+                true
+            } else {
+                remaining.removeAt(index)
+                false
+            }
+        }
+    }
+
+    private fun NewsItem.reviewedClaimMatches(other: NewsItem): Boolean =
+        type == other.type && region == other.region &&
+            subjects.map { it.name.normalized() }.toSet() == other.subjects.map { it.name.normalized() }.toSet() &&
+            direction == other.direction && cause.normalizedOptional() == other.cause.normalizedOptional() &&
+            metrics.toSet() == other.metrics.toSet() && assertion.normalized() == other.assertion.normalized()
+
+    private fun String.normalized(): String = lowercase().replace(Regex("[^\\p{L}\\p{N}%]+"), " ").trim()
+    private fun String?.normalizedOptional(): String? = this?.normalized()
 
     private fun NewsItem.sameClaimAs(other: NewsItem): Boolean = type == other.type && region == other.region &&
         subjects == other.subjects && assertion == other.assertion && direction == other.direction &&
@@ -147,4 +193,9 @@ internal class NewsItemMetricsEvaluator {
     }
 }
 
-internal data class ItemMetrics(val metrics: Map<String, Double>, val predictedCount: Int)
+internal data class ItemMetrics(
+    val metrics: Map<String, Double>,
+    val predictedCount: Int,
+    val falsePositives: List<Pair<String, NewsItem>>,
+    val falseNegatives: List<Pair<String, NewsItem>>,
+)

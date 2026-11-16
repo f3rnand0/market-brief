@@ -41,11 +41,20 @@ class RunEval(
         val usages = results.map { it.second.usage } + citationMetrics.judgeUsages
         val completeMetrics = itemMetrics.metrics + citationMetrics.metrics +
             extractionUsageMetrics(usages, itemMetrics.predictedCount)
+        val articleIds = articles.map { it.id }
         val report = EvalReport(
             UUID.randomUUID().toString(),
             Instant.now(clock),
             completeMetrics,
-            markdown = reportFormatter.format(completeMetrics, citationMetrics.reviewSamples),
+            markdown = reportFormatter.format(
+                completeMetrics,
+                citationMetrics.reviewSamples,
+                itemMetrics,
+                goldSet.version,
+                articleIds,
+            ),
+            goldSetVersion = goldSet.version,
+            articleIds = articleIds,
         )
         evalStore.save(report)
         return report

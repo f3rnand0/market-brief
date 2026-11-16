@@ -30,7 +30,7 @@ interface NewsItemExtractor {
 }
 
 interface ClaimSupportJudge {
-    suspend fun judge(item: NewsItem): ClaimSupportJudgment
+    suspend fun judge(item: NewsItem, context: ClaimSupportContext): ClaimSupportJudgment
 }
 
 interface ReportStore {

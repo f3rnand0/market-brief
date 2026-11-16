@@ -43,7 +43,9 @@ object CompositionRoot {
         val evalNewsSource = JsonCorpusNewsSource.fromResource()
         val llmConfig = config.toOpenAiCompatibleConfig(env)
         val extractor = LangChain4jNewsItemExtractor.fromConfig(llmConfig)
-        val claimSupportJudge = LangChain4jClaimSupportJudge.fromConfig(llmConfig)
+        val claimSupportJudge = LangChain4jClaimSupportJudge.fromConfig(
+            config.toClaimSupportJudgeConfig(env),
+        )
         val generateDailyReport = GenerateDailyReport(
             marketDataFetcher = marketDataFetcher,
             newsSource = newsSource,
@@ -88,5 +90,16 @@ fun ApplicationConfig.toOpenAiCompatibleConfig(env: Map<String, String> = System
         maxRetries = llm.maxRetries,
         inputCostPerMillionUsd = llm.inputCostPerMillionUsd,
         outputCostPerMillionUsd = llm.outputCostPerMillionUsd,
+    )
+}
+
+fun ApplicationConfig.toClaimSupportJudgeConfig(env: Map<String, String> = System.getenv()): OpenAiCompatibleConfig {
+    val extractionConfig = toOpenAiCompatibleConfig(env)
+    return extractionConfig.copy(
+        model = llm.claimSupportJudgeModel ?: extractionConfig.model,
+        inputCostPerMillionUsd = llm.claimSupportJudgeInputCostPerMillionUsd
+            ?: extractionConfig.inputCostPerMillionUsd,
+        outputCostPerMillionUsd = llm.claimSupportJudgeOutputCostPerMillionUsd
+            ?: extractionConfig.outputCostPerMillionUsd,
     )
 }

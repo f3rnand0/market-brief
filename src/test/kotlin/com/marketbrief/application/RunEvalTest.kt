@@ -2,6 +2,7 @@ package com.marketbrief.application
 
 import com.marketbrief.domain.Article
 import com.marketbrief.domain.ClaimSupport
+import com.marketbrief.domain.ClaimSupportContext
 import com.marketbrief.domain.ClaimSupportJudge
 import com.marketbrief.domain.ClaimSupportJudgment
 import com.marketbrief.domain.DayWindow
@@ -72,6 +73,25 @@ class RunEvalTest {
 
         assertEquals(5.0 / 7.0, report.metrics.getValue("accuracy.precision"))
         assertEquals(5.0 / 7.0, report.metrics.getValue("accuracy.recall"))
+    }
+
+    @Test
+    fun `normalized assertion match is reported separately from strict exact match`() = runBlocking {
+        val article = article()
+        val expected = newsItem(article.id)
+        val prediction = expected.copy(assertion = expected.assertion.uppercase().removeSuffix("."))
+        val report = runEval(
+            articles = listOf(article),
+            itemsByArticleId = mapOf(article.id to listOf(prediction)),
+            goldSet = GoldSet(listOf(GoldCase(article.id, listOf(expected))), version = "test-v1"),
+        ).run(DayWindow(article.publishedAt))
+
+        assertEquals(0.0, report.metrics.getValue("precision"))
+        assertEquals(1.0, report.metrics.getValue("reviewedMatch.precision"))
+        assertEquals("test-v1", report.goldSetVersion)
+        assertEquals(listOf(article.id), report.articleIds)
+        assertTrue(report.markdown.contains("False positives"))
+        assertTrue(report.markdown.contains("reviewedMatch.precision"))
     }
 
     @Test
@@ -246,11 +266,12 @@ class RunEvalTest {
         private val support: ClaimSupport,
         private val usage: ExtractionUsage? = null,
     ) : ClaimSupportJudge {
-        override suspend fun judge(item: NewsItem): ClaimSupportJudgment = ClaimSupportJudgment(support, usage)
+        override suspend fun judge(item: NewsItem, context: ClaimSupportContext): ClaimSupportJudgment =
+            ClaimSupportJudgment(support, usage)
     }
 
     private object FailingClaimSupportJudge : ClaimSupportJudge {
-        override suspend fun judge(item: NewsItem): ClaimSupportJudgment =
+        override suspend fun judge(item: NewsItem, context: ClaimSupportContext): ClaimSupportJudgment =
             error("The judge must not receive an item with an absent source quote")
     }
 

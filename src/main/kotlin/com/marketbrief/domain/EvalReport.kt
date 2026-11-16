@@ -8,6 +8,8 @@ data class EvalReport(
     val metrics: Map<String, Double>,
     val version: Int = 1,
     val markdown: String = "",
+    val goldSetVersion: String = "unversioned",
+    val articleIds: List<String> = emptyList(),
 ) {
     init {
         require(id.isNotBlank()) { "EvalReport id must not be blank" }

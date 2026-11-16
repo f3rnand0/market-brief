@@ -22,9 +22,15 @@ data class ApplicationConfig(val llm: LlmConfig, val storage: StorageConfig = St
         val maxRetries: Int = 2,
         val inputCostPerMillionUsd: Double? = null,
         val outputCostPerMillionUsd: Double? = null,
+        val claimSupportJudgeModel: String? = null,
+        val claimSupportJudgeInputCostPerMillionUsd: Double? = null,
+        val claimSupportJudgeOutputCostPerMillionUsd: Double? = null,
     ) {
         init {
             require(apiKeyEnv.isNotBlank()) { "llm.apiKeyEnv must not be blank" }
+            require(claimSupportJudgeModel == null || claimSupportJudgeModel.isNotBlank()) {
+                "llm.claimSupportJudgeModel must not be blank"
+            }
             require((inputCostPerMillionUsd == null) == (outputCostPerMillionUsd == null)) {
                 "llm input and output token rates must both be set or both be absent"
             }
@@ -38,6 +44,26 @@ data class ApplicationConfig(val llm: LlmConfig, val storage: StorageConfig = St
             ) {
                 "llm.outputCostPerMillionUsd must be finite and non-negative"
             }
+            require(
+                (claimSupportJudgeInputCostPerMillionUsd == null) ==
+                    (claimSupportJudgeOutputCostPerMillionUsd == null),
+            ) {
+                "claim-support judge input and output token rates must both be set or both be absent"
+            }
+            require(
+                claimSupportJudgeInputCostPerMillionUsd == null ||
+                    (
+                        claimSupportJudgeInputCostPerMillionUsd.isFinite() &&
+                            claimSupportJudgeInputCostPerMillionUsd >= 0
+                        ),
+            ) { "llm.claimSupportJudgeInputCostPerMillionUsd must be finite and non-negative" }
+            require(
+                claimSupportJudgeOutputCostPerMillionUsd == null ||
+                    (
+                        claimSupportJudgeOutputCostPerMillionUsd.isFinite() &&
+                            claimSupportJudgeOutputCostPerMillionUsd >= 0
+                        ),
+            ) { "llm.claimSupportJudgeOutputCostPerMillionUsd must be finite and non-negative" }
         }
     }
 }

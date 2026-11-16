@@ -1,6 +1,7 @@
 package com.marketbrief.adapters.llm
 
 import com.marketbrief.domain.ClaimSupport
+import com.marketbrief.domain.ClaimSupportContext
 import com.marketbrief.domain.item
 import dev.langchain4j.model.openai.OpenAiChatModel
 import kotlinx.coroutines.runBlocking
@@ -18,7 +19,10 @@ class LangChain4jClaimSupportJudgeTest {
         StubChatServer("""{"verdict":"UNSUPPORTED"}""").use { server ->
             val judge = judge(server)
 
-            val result = judge.judge(item(assertion = "The company doubled its revenue."))
+            val result = judge.judge(
+                item(assertion = "The company doubled its revenue."),
+                ClaimSupportContext("Example headline", "The company doubled its revenue last year."),
+            )
 
             assertEquals(ClaimSupport.UNSUPPORTED, result.support)
             assertEquals(1, result.usage?.inputTokens)
@@ -31,13 +35,15 @@ class LangChain4jClaimSupportJudgeTest {
             )
             assertTrue(request.getValue("messages").jsonArray.toString().contains("supporting quote"))
             assertTrue(request.getValue("messages").jsonArray.toString().contains("doubled its revenue"))
+            assertTrue(request.getValue("messages").jsonArray.toString().contains("Example headline"))
+            assertTrue(request.getValue("messages").jsonArray.toString().contains("last year"))
         }
     }
 
     @Test
     fun `malformed judge output is indeterminate`() = runBlocking {
         StubChatServer("not json").use { server ->
-            val result = judge(server).judge(item())
+            val result = judge(server).judge(item(), ClaimSupportContext("Headline", "Article context"))
 
             assertEquals(ClaimSupport.INDETERMINATE, result.support)
             assertEquals(1, result.usage?.inputTokens)

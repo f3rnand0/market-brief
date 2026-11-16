@@ -27,7 +27,9 @@ object JsonGoldSet {
             } ?: error("Gold set case not found: $file")
             GoldCase(id, entry.items.map { it.toDomain(id) })
         }
-        return GoldSet(cases)
+        val version = loader.getResourceAsStream("gold/version.txt")?.bufferedReader()?.use { it.readText().trim() }
+            ?: "unversioned"
+        return GoldSet(cases, version)
     }
 }
 

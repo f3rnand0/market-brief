@@ -9,6 +9,8 @@ data class EvalReportDto(
     val generatedAt: String,
     val version: Int = 1,
     val metrics: Map<String, Double>,
+    val goldSetVersion: String = "unversioned",
+    val articleIds: List<String> = emptyList(),
 )
 
-fun EvalReport.toDto() = EvalReportDto(id, generatedAt.toString(), version, metrics)
+fun EvalReport.toDto() = EvalReportDto(id, generatedAt.toString(), version, metrics, goldSetVersion, articleIds)

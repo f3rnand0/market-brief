@@ -6,7 +6,7 @@ data class GoldCase(val articleId: String, val expectedItems: List<NewsItem>) {
     }
 }
 
-data class GoldSet(val cases: List<GoldCase>) {
+data class GoldSet(val cases: List<GoldCase>, val version: String = "unversioned") {
     private val byArticleId = cases.associateBy { it.articleId }
 
     init {
