@@ -42,3 +42,9 @@ interface EvalStore {
     fun save(report: EvalReport)
     fun load(id: String): EvalReport?
 }
+
+interface EvalCheckpointStore {
+    fun load(): EvalCheckpoint?
+    fun save(checkpoint: EvalCheckpoint)
+    fun clear()
+}

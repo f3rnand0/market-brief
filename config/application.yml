@@ -2,7 +2,7 @@ llm:
   baseUrl: https://opencode.ai/inference/go/openai/v1
   model: deepseek-v4.1-flash
   apiKeyEnv: OPENCODE_API_KEY
-  requestTimeoutSeconds: 120
+  requestTimeoutSeconds: 300
   maxRetries: 2
   inputCostPerMillionUsd: 0.15
   outputCostPerMillionUsd: 0.60

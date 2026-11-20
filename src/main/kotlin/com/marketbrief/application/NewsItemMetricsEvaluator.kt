@@ -12,40 +12,43 @@ internal class NewsItemMetricsEvaluator {
         val exactMatches = results.sumOf { (article, extraction) ->
             countOneToOneExactMatches(extraction.items, goldSet.expectedFor(article.id))
         }
-        val reviewedMatches = results.sumOf { (article, extraction) ->
-            countOneToOneReviewedMatches(extraction.items, goldSet.expectedFor(article.id))
+        val normalizedExactMatches = results.sumOf { (article, extraction) ->
+            countOneToOneNormalizedExactMatches(extraction.items, goldSet.expectedFor(article.id))
         }
         val fieldMatches = results.sumOf { (article, extraction) ->
             countOneToOneFieldMatches(extraction.items, goldSet.expectedFor(article.id))
         }
         val missing = (expected.size - exactMatches).coerceAtLeast(0)
+        val articleAlignments = results.map { (article, extraction) ->
+            alignArticle(article.id, extraction.items, goldSet.expectedFor(article.id))
+        }
+        val claimAlignments = articleAlignments.flatMap { it.candidates }
         return ItemMetrics(
             metrics = mapOf(
                 "accuracy.precision" to ratio(fieldMatches, predicted.size * FIELD_COUNT),
                 "accuracy.recall" to ratio(fieldMatches, expected.size * FIELD_COUNT),
                 "precision" to ratio(exactMatches, predicted.size),
                 "recall" to ratio(exactMatches, expected.size),
-                "reviewedMatch.precision" to ratio(reviewedMatches, predicted.size),
-                "reviewedMatch.recall" to ratio(reviewedMatches, expected.size),
+                "normalizedExact.precision" to ratio(normalizedExactMatches, predicted.size),
+                "normalizedExact.recall" to ratio(normalizedExactMatches, expected.size),
+                "claimAlignment.candidatePrecision" to ratio(claimAlignments.size, predicted.size),
+                "claimAlignment.candidateRecall" to ratio(claimAlignments.size, expected.size),
                 "missingValues" to ratio(missing, expected.size),
                 "predictedItems" to predicted.size.toDouble(),
                 "expectedItems" to expected.size.toDouble(),
                 "missingCount" to missing.toDouble(),
             ),
             predictedCount = predicted.size,
-            falsePositives = results.flatMap { (article, extraction) ->
-                unmatchedItems(extraction.items, goldSet.expectedFor(article.id)).map { article.id to it }
-            },
-            falseNegatives = results.flatMap { (article, extraction) ->
-                unmatchedItems(goldSet.expectedFor(article.id), extraction.items).map { article.id to it }
-            },
+            unalignedPredictions = articleAlignments.flatMap { it.unmatchedPredictions },
+            unalignedExpected = articleAlignments.flatMap { it.unmatchedExpected },
+            claimAlignments = claimAlignments,
         )
     }
 
-    private fun countOneToOneReviewedMatches(predicted: List<NewsItem>, expected: List<NewsItem>): Int {
+    private fun countOneToOneNormalizedExactMatches(predicted: List<NewsItem>, expected: List<NewsItem>): Int {
         val unmatched = expected.toMutableList()
         return predicted.count { item ->
-            val index = unmatched.indexOfFirst { gold -> item.reviewedClaimMatches(gold) }
+            val index = unmatched.indexOfFirst { gold -> item.normalizedExactMatch(gold) }
             if (index < 0) {
                 false
             } else {
@@ -55,24 +58,110 @@ internal class NewsItemMetricsEvaluator {
         }
     }
 
-    private fun unmatchedItems(items: List<NewsItem>, candidates: List<NewsItem>): List<NewsItem> {
-        val remaining = candidates.toMutableList()
-        return items.filter { item ->
-            val index = remaining.indexOfFirst { item.reviewedClaimMatches(it) }
-            if (index < 0) {
-                true
-            } else {
-                remaining.removeAt(index)
-                false
-            }
-        }
-    }
-
-    private fun NewsItem.reviewedClaimMatches(other: NewsItem): Boolean =
+    private fun NewsItem.normalizedExactMatch(other: NewsItem): Boolean =
         type == other.type && region == other.region &&
             subjects.map { it.name.normalized() }.toSet() == other.subjects.map { it.name.normalized() }.toSet() &&
             direction == other.direction && cause.normalizedOptional() == other.cause.normalizedOptional() &&
             metrics.toSet() == other.metrics.toSet() && assertion.normalized() == other.assertion.normalized()
+
+    private fun alignArticle(articleId: String, predicted: List<NewsItem>, expected: List<NewsItem>): ArticleAlignment {
+        if (predicted.isEmpty() || expected.isEmpty()) {
+            return ArticleAlignment(
+                emptyList(),
+                predicted.map { articleId to it },
+                expected.map { articleId to it },
+            )
+        }
+        val scores = Array(predicted.size) { predictedIndex ->
+            IntArray(expected.size + predicted.size) { expectedIndex ->
+                if (expectedIndex !in expected.indices) {
+                    0
+                } else {
+                    val prediction = predicted[predictedIndex]
+                    val gold = expected[expectedIndex]
+                    val assertionSimilarity = tokenSimilarity(prediction.assertion, gold.assertion)
+                    val subjectSimilarity = tokenSimilarity(
+                        prediction.subjects.joinToString(" ") { it.name },
+                        gold.subjects.joinToString(" ") { it.name },
+                    )
+                    if (isClaimAlignmentCandidate(prediction, gold, assertionSimilarity, subjectSimilarity)) {
+                        ALIGNMENT_BASE_WEIGHT + (assertionSimilarity * ALIGNMENT_SIMILARITY_WEIGHT).toInt()
+                    } else {
+                        0
+                    }
+                }
+            }
+        }
+        val assignments = maximumWeightAssignment(scores)
+        val matchedPredictions = mutableSetOf<Int>()
+        val matchedExpected = mutableSetOf<Int>()
+        val candidates = assignments.indices.mapNotNull { predictionIndex ->
+            val expectedIndex = assignments[predictionIndex]
+            if (expectedIndex !in expected.indices || scores[predictionIndex][expectedIndex] == 0) {
+                null
+            } else {
+                matchedPredictions += predictionIndex
+                matchedExpected += expectedIndex
+                val prediction = predicted[predictionIndex]
+                val gold = expected[expectedIndex]
+                ClaimAlignmentCandidate(
+                    articleId,
+                    prediction,
+                    gold,
+                    tokenSimilarity(prediction.assertion, gold.assertion),
+                    differingFields(prediction, gold),
+                )
+            }
+        }
+        return ArticleAlignment(
+            candidates,
+            predicted.filterIndexed { index, _ -> index !in matchedPredictions }.map { articleId to it },
+            expected.filterIndexed { index, _ -> index !in matchedExpected }.map { articleId to it },
+        )
+    }
+
+    private fun isClaimAlignmentCandidate(
+        prediction: NewsItem,
+        gold: NewsItem,
+        assertionSimilarity: Double,
+        subjectSimilarity: Double,
+    ): Boolean {
+        val directionsConflict = prediction.direction != null && gold.direction != null &&
+            prediction.direction != gold.direction
+        val predictionMetrics = prediction.metrics.map { it.value.normalized() to it.unit.normalized() }.toSet()
+        val goldMetrics = gold.metrics.map { it.value.normalized() to it.unit.normalized() }.toSet()
+        val metricsConflict = predictionMetrics.isNotEmpty() && goldMetrics.isNotEmpty() &&
+            predictionMetrics.intersect(goldMetrics).isEmpty()
+        return !directionsConflict && !metricsConflict &&
+            (
+                assertionSimilarity >= MIN_ASSERTION_SIMILARITY ||
+                    (
+                        assertionSimilarity >= MIN_SUBJECT_ASSERTION_SIMILARITY &&
+                            subjectSimilarity >= MIN_SUBJECT_SIMILARITY
+                        )
+                )
+    }
+
+    private fun differingFields(prediction: NewsItem, gold: NewsItem): List<String> = buildList {
+        if (prediction.type != gold.type) add("type")
+        if (prediction.region != gold.region) add("region")
+        if (prediction.subjects.map { it.name.normalized() }.toSet() !=
+            gold.subjects.map { it.name.normalized() }.toSet()
+        ) {
+            add("subjects")
+        }
+        if (prediction.assertion != gold.assertion) add("assertion wording")
+        if (prediction.direction != gold.direction) add("direction")
+        if (prediction.cause.normalizedOptional() != gold.cause.normalizedOptional()) add("cause")
+        if (prediction.metrics.toSet() != gold.metrics.toSet()) add("metrics")
+    }
+
+    private fun tokenSimilarity(first: String, second: String): Double {
+        val firstTokens = first.normalized().split(WHITESPACE).filter(String::isNotBlank).toSet()
+        val secondTokens = second.normalized().split(WHITESPACE).filter(String::isNotBlank).toSet()
+        if (firstTokens.isEmpty() || secondTokens.isEmpty()) return 0.0
+        return firstTokens.intersect(secondTokens).size.toDouble() / firstTokens.union(secondTokens).size
+    }
 
     private fun String.normalized(): String = lowercase().replace(Regex("[^\\p{L}\\p{N}%]+"), " ").trim()
     private fun String?.normalizedOptional(): String? = this?.normalized()
@@ -190,12 +279,33 @@ internal class NewsItemMetricsEvaluator {
 
     private companion object {
         const val FIELD_COUNT = 7
+        const val ALIGNMENT_BASE_WEIGHT = 4
+        const val ALIGNMENT_SIMILARITY_WEIGHT = 3
+        const val MIN_ASSERTION_SIMILARITY = 0.45
+        const val MIN_SUBJECT_ASSERTION_SIMILARITY = 0.25
+        const val MIN_SUBJECT_SIMILARITY = 0.6
+        val WHITESPACE = Regex("\\s+")
     }
 }
+
+private data class ArticleAlignment(
+    val candidates: List<ClaimAlignmentCandidate>,
+    val unmatchedPredictions: List<Pair<String, NewsItem>>,
+    val unmatchedExpected: List<Pair<String, NewsItem>>,
+)
+
+internal data class ClaimAlignmentCandidate(
+    val articleId: String,
+    val prediction: NewsItem,
+    val expected: NewsItem,
+    val assertionSimilarity: Double,
+    val differingFields: List<String>,
+)
 
 internal data class ItemMetrics(
     val metrics: Map<String, Double>,
     val predictedCount: Int,
-    val falsePositives: List<Pair<String, NewsItem>>,
-    val falseNegatives: List<Pair<String, NewsItem>>,
+    val unalignedPredictions: List<Pair<String, NewsItem>>,
+    val unalignedExpected: List<Pair<String, NewsItem>>,
+    val claimAlignments: List<ClaimAlignmentCandidate>,
 )

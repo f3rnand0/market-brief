@@ -2,6 +2,8 @@ package com.marketbrief.application
 
 import com.marketbrief.domain.ClaimSupportJudge
 import com.marketbrief.domain.DayWindow
+import com.marketbrief.domain.EvalCheckpoint
+import com.marketbrief.domain.EvalCheckpointStore
 import com.marketbrief.domain.EvalReport
 import com.marketbrief.domain.EvalStore
 import com.marketbrief.domain.ExtractionUsage
@@ -22,6 +24,7 @@ class RunEval(
     private val goldSet: GoldSet,
     claimSupportJudge: ClaimSupportJudge,
     private val clock: Clock = Clock.systemUTC(),
+    private val checkpointStore: EvalCheckpointStore? = null,
 ) {
     private val itemMetricsEvaluator = NewsItemMetricsEvaluator()
     private val citationMetricsEvaluator = CitationMetricsEvaluator(claimSupportJudge)
@@ -37,8 +40,18 @@ class RunEval(
             "NewsSource is missing Gold set Articles: ${missingArticleIds.sorted().joinToString(", ")}"
         }
         val articles = goldSet.cases.map { articlesById.getValue(it.articleId) }
+        val articleIds = articles.map { it.id }
+        val savedCheckpoint = checkpointStore?.load()?.takeIf {
+            it.goldSetVersion == goldSet.version && it.articleIds == articleIds
+        }
+        val extractions = savedCheckpoint?.extractions?.toMutableMap() ?: mutableMapOf()
         log.info("Starting eval for Gold set {} with {} Articles", goldSet.version, articles.size)
         val results = articles.mapIndexed { index, article ->
+            val savedExtraction = extractions[article.id]
+            if (savedExtraction != null) {
+                log.info("Resuming Article {}/{} from checkpoint: {}", index + 1, articles.size, article.id)
+                return@mapIndexed article to savedExtraction
+            }
             val startedAt = System.nanoTime()
             log.info("Extracting Article {}/{}: {}", index + 1, articles.size, article.id)
             val extraction = extractor.extract(article)
@@ -50,6 +63,8 @@ class RunEval(
                 extraction.items.size,
                 elapsedMillis(startedAt),
             )
+            extractions[article.id] = extraction
+            checkpointStore?.save(EvalCheckpoint(goldSet.version, articleIds, extractions.toMap()))
             article to extraction
         }
         log.info("Starting citation checks for {} extracted NewsItems", results.sumOf { it.second.items.size })
@@ -58,7 +73,6 @@ class RunEval(
         val usages = results.map { it.second.usage } + citationMetrics.judgeUsages
         val completeMetrics = itemMetrics.metrics + citationMetrics.metrics +
             extractionUsageMetrics(usages, itemMetrics.predictedCount)
-        val articleIds = articles.map { it.id }
         val report = EvalReport(
             UUID.randomUUID().toString(),
             Instant.now(clock),
@@ -74,6 +88,7 @@ class RunEval(
             articleIds = articleIds,
         )
         evalStore.save(report)
+        checkpointStore?.clear()
         log.info(
             "Completed eval {} for Gold set {} Articles={} elapsedMetrics={}",
             report.id,

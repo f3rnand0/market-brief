@@ -87,11 +87,12 @@ class RunEvalTest {
         ).run(DayWindow(article.publishedAt))
 
         assertEquals(0.0, report.metrics.getValue("precision"))
-        assertEquals(1.0, report.metrics.getValue("reviewedMatch.precision"))
+        assertEquals(1.0, report.metrics.getValue("normalizedExact.precision"))
+        assertEquals(1.0, report.metrics.getValue("claimAlignment.candidatePrecision"))
         assertEquals("test-v1", report.goldSetVersion)
         assertEquals(listOf(article.id), report.articleIds)
-        assertTrue(report.markdown.contains("False positives"))
-        assertTrue(report.markdown.contains("reviewedMatch.precision"))
+        assertTrue(report.markdown.contains("Candidate claim alignments for review"))
+        assertTrue(report.markdown.contains("claimAlignment.candidatePrecision"))
     }
 
     @Test

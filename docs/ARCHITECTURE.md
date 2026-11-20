@@ -334,15 +334,16 @@ reference set they scored.
 
 Snapshot values are tested separately with recorded market-data fixtures; they
 are not inputs to `RunEval`. `RunEval` reports the Gold version and Article IDs
-alongside exact item precision/recall, normalized reviewed-match
-precision/recall, field-level precision/recall, citation quote presence,
-semantic citation support, false-positive/false-negative details, token usage,
-and estimated cost. Exact matches require all claim fields and are one-to-one.
-Reviewed matches also require type, region, subjects, direction, cause, and
-metrics to match, and normalize assertion case and punctuation; they do not
-establish semantic equivalence. Field-level matches use a maximum-weight
-one-to-one assignment among pairs with at least one shared subject. A zero
-denominator produces `0.0`, not a perfect score.
+alongside exact item precision/recall, normalized exact precision/recall,
+candidate claim-alignment precision/recall, field-level precision/recall,
+citation quote presence, semantic citation support, unaligned item details,
+token usage, and estimated cost. Exact matches require every claim field to
+match. Candidate alignment pairs one predicted item with one Gold item from the
+same Article when assertion or subject wording is similar and direction or
+metrics do not conflict. These candidates are not confirmed correct claims;
+the report lists differing fields for review. Field-level matches use a
+maximum-weight one-to-one assignment among pairs with at least one shared
+subject. A zero denominator produces `0.0`, not a perfect score.
 
 `RunEval` checks every `Source` quote for literal presence in the Article's
 headline or body. It marks missing quotes as unsupported without asking the
@@ -369,5 +370,11 @@ multipliers. If usage or rates are unavailable, the report sets
 
 `JsonEvalStore` writes versioned JSON and Markdown files; the HTTP API exposes
 the JSON report.
+
+`RunEval` saves each completed Article extraction to `storage.evalsDir/checkpoint.json`.
+If extraction or citation evaluation fails, the next run reuses matching
+extractions for the same Gold version and ordered Article IDs. A completed
+report clears the checkpoint. The configured LLM request timeout is 300 seconds;
+the configured retry count still applies to transient provider failures.
 
 ---

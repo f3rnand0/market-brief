@@ -18,7 +18,7 @@ data class ApplicationConfig(val llm: LlmConfig, val storage: StorageConfig = St
         val baseUrl: String,
         val model: String,
         val apiKeyEnv: String = "OPENCODE_API_KEY",
-        val requestTimeoutSeconds: Long = 120,
+        val requestTimeoutSeconds: Long = 300,
         val maxRetries: Int = 2,
         val inputCostPerMillionUsd: Double? = null,
         val outputCostPerMillionUsd: Double? = null,
