@@ -48,7 +48,7 @@ class ApplicationConfigLoaderTest {
         )
 
         assertEquals("OPENCODE_API_KEY", config.llm.apiKeyEnv)
-        assertEquals(120, config.llm.requestTimeoutSeconds)
+        assertEquals(300, config.llm.requestTimeoutSeconds)
         assertEquals(2, config.llm.maxRetries)
     }
 
