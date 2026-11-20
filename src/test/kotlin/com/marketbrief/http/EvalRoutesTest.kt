@@ -3,6 +3,7 @@ package com.marketbrief.http
 import com.marketbrief.application.GenerateDailyReport
 import com.marketbrief.application.RunEval
 import com.marketbrief.domain.ClaimSupport
+import com.marketbrief.domain.ClaimSupportContext
 import com.marketbrief.domain.ClaimSupportJudge
 import com.marketbrief.domain.ClaimSupportJudgment
 import com.marketbrief.domain.DayWindow
@@ -119,7 +120,8 @@ class EvalRoutesTest {
     }
 
     private class FixedClaimSupportJudge : ClaimSupportJudge {
-        override suspend fun judge(item: NewsItem) = ClaimSupportJudgment(ClaimSupport.SUPPORTED)
+        override suspend fun judge(item: NewsItem, context: ClaimSupportContext) =
+            ClaimSupportJudgment(ClaimSupport.SUPPORTED)
     }
 
     private object ArticleFixture {

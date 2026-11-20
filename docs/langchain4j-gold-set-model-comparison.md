@@ -35,8 +35,9 @@ The rates below are USD per million tokens, from the OpenCode Go model catalog
 | `minimax-m3` | $0.30 | $1.20 |
 
 The application config sets the DeepSeek rates for the configured production
-model. The comparison test supplies each model's rates separately, including
-the judge. These estimates use standard input/output rates; they do not account
+model and MiniMax rates for the separately configured production judge. The
+comparison test supplies each model's rates separately, including the judge.
+These estimates use standard input/output rates; they do not account
 for cached-input discounts or DeepSeek's time-based price multiplier.
 
 ## Difference from `RunEval`

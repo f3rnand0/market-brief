@@ -67,6 +67,9 @@ tasks.register<Test>("liveTest") {
     useJUnitPlatform {
         includeTags("live")
     }
+    testLogging {
+        showStandardStreams = true
+    }
 }
 
 ktlint {

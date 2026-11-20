@@ -1,6 +1,7 @@
 package com.marketbrief.adapters.llm
 
 import com.marketbrief.domain.ClaimSupport
+import com.marketbrief.domain.ClaimSupportContext
 import com.marketbrief.domain.ClaimSupportJudge
 import com.marketbrief.domain.ClaimSupportJudgment
 import com.marketbrief.domain.NewsItem
@@ -21,9 +22,9 @@ class LangChain4jClaimSupportJudge(
     private val outputCostPerMillionUsd: Double? = null,
     private val json: Json = Json { ignoreUnknownKeys = true },
 ) : ClaimSupportJudge {
-    override suspend fun judge(item: NewsItem): ClaimSupportJudgment {
+    override suspend fun judge(item: NewsItem, context: ClaimSupportContext): ClaimSupportJudgment {
         val response = try {
-            chatModel.chatAsync(request(item)).await()
+            chatModel.chatAsync(request(item, context)).await()
         } catch (e: CancellationException) {
             throw e
         } catch (e: LangChain4jException) {
@@ -45,12 +46,15 @@ class LangChain4jClaimSupportJudge(
         return ClaimSupportJudgment(verdict, usage)
     }
 
-    private fun request(item: NewsItem): ChatRequest = ChatRequest.builder()
+    private fun request(item: NewsItem, context: ClaimSupportContext): ChatRequest = ChatRequest.builder()
         .messages(
             SystemMessage.from(SYSTEM_PROMPT),
             UserMessage.from(
                 buildString {
                     appendLine("Assertion: ${item.assertion}")
+                    appendLine("Article headline: ${context.headline}")
+                    appendLine("Relevant Article text:")
+                    appendLine(context.articleText)
                     appendLine("Cited quote spans:")
                     item.source.quotes.forEach { appendLine("- $it") }
                 },
@@ -71,7 +75,9 @@ class LangChain4jClaimSupportJudge(
 
         private val SYSTEM_PROMPT = """
             Decide whether the cited quote spans support the assertion.
-            Use only the quote spans. Do not use outside knowledge or assume facts not stated.
+            Treat each cited quote as the evidence under review.
+            Use the cited quote spans and surrounding Article text to decide whether the assertion is supported.
+            The surrounding text is context only; do not infer facts that the Article does not state.
             Return only a JSON object: {"verdict":"SUPPORTED|UNSUPPORTED|INDETERMINATE"}.
             Use SUPPORTED only when the quotes support the full assertion. Use UNSUPPORTED when they contradict it.
             Use INDETERMINATE when the quotes are insufficient, ambiguous, or only partly support it.

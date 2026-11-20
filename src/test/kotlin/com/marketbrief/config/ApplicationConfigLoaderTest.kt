@@ -1,5 +1,6 @@
 package com.marketbrief.config
 
+import com.marketbrief.toClaimSupportJudgeConfig
 import com.marketbrief.toOpenAiCompatibleConfig
 import java.nio.file.Path
 import kotlin.test.Test
@@ -47,7 +48,7 @@ class ApplicationConfigLoaderTest {
         )
 
         assertEquals("OPENCODE_API_KEY", config.llm.apiKeyEnv)
-        assertEquals(120, config.llm.requestTimeoutSeconds)
+        assertEquals(300, config.llm.requestTimeoutSeconds)
         assertEquals(2, config.llm.maxRetries)
     }
 
@@ -88,6 +89,22 @@ class ApplicationConfigLoaderTest {
         assertEquals("OPENCODE_API_KEY", config.llm.apiKeyEnv)
         assertEquals(0.15, config.llm.inputCostPerMillionUsd)
         assertEquals(0.60, config.llm.outputCostPerMillionUsd)
+        assertEquals("minimax-m3", config.llm.claimSupportJudgeModel)
+        assertEquals(0.30, config.llm.claimSupportJudgeInputCostPerMillionUsd)
+        assertEquals(1.20, config.llm.claimSupportJudgeOutputCostPerMillionUsd)
+    }
+
+    @Test
+    fun `builds independent claim support judge model configuration`() {
+        val config = ApplicationConfigLoader.load(Path.of(ApplicationConfigLoader.DEFAULT_PATH))
+
+        val judgeConfig = config.toClaimSupportJudgeConfig(mapOf("OPENCODE_API_KEY" to "test-key"))
+
+        assertEquals("minimax-m3", judgeConfig.model)
+        assertEquals(0.30, judgeConfig.inputCostPerMillionUsd)
+        assertEquals(1.20, judgeConfig.outputCostPerMillionUsd)
+        assertEquals(config.llm.baseUrl, judgeConfig.baseUrl)
+        assertEquals(config.llm.model, config.toOpenAiCompatibleConfig(mapOf("OPENCODE_API_KEY" to "test-key")).model)
     }
 
     @Test

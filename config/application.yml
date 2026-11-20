@@ -2,10 +2,14 @@ llm:
   baseUrl: https://opencode.ai/inference/go/openai/v1
   model: deepseek-v4.1-flash
   apiKeyEnv: OPENCODE_API_KEY
-  requestTimeoutSeconds: 120
+  requestTimeoutSeconds: 300
   maxRetries: 2
   inputCostPerMillionUsd: 0.15
   outputCostPerMillionUsd: 0.60
+  claimSupportJudgeModel: minimax-m3
+  claimSupportJudgeInputCostPerMillionUsd: 0.30
+  claimSupportJudgeOutputCostPerMillionUsd: 1.20
 
 storage:
   reportsDir: data/reports
+  evalHistoryFile: docs/eval-history.md

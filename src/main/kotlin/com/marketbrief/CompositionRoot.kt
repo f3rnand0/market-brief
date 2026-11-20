@@ -11,8 +11,10 @@ import com.marketbrief.adapters.news.GdeltNewsSource
 import com.marketbrief.adapters.news.JsonCorpusNewsSource
 import com.marketbrief.adapters.news.JsonGoldSet
 import com.marketbrief.adapters.news.RssNewsSource
+import com.marketbrief.adapters.report.JsonEvalCheckpointStore
 import com.marketbrief.adapters.report.JsonEvalStore
 import com.marketbrief.adapters.report.JsonReportStore
+import com.marketbrief.adapters.report.MarkdownEvalHistoryStore
 import com.marketbrief.application.GenerateDailyReport
 import com.marketbrief.application.RunEval
 import com.marketbrief.config.ApplicationConfig
@@ -43,7 +45,9 @@ object CompositionRoot {
         val evalNewsSource = JsonCorpusNewsSource.fromResource()
         val llmConfig = config.toOpenAiCompatibleConfig(env)
         val extractor = LangChain4jNewsItemExtractor.fromConfig(llmConfig)
-        val claimSupportJudge = LangChain4jClaimSupportJudge.fromConfig(llmConfig)
+        val claimSupportJudge = LangChain4jClaimSupportJudge.fromConfig(
+            config.toClaimSupportJudgeConfig(env),
+        )
         val generateDailyReport = GenerateDailyReport(
             marketDataFetcher = marketDataFetcher,
             newsSource = newsSource,
@@ -60,6 +64,12 @@ object CompositionRoot {
                 evalStore,
                 JsonGoldSet.fromResource(),
                 claimSupportJudge,
+                checkpointStore = JsonEvalCheckpointStore(Path.of(config.storage.evalsDir)),
+                evalHistoryStore = MarkdownEvalHistoryStore(
+                    Path.of(config.storage.evalHistoryFile),
+                    extractionModel = llmConfig.model,
+                    claimSupportJudgeModel = config.llm.claimSupportJudgeModel ?: llmConfig.model,
+                ),
             ),
             evalStore,
         )
@@ -88,5 +98,16 @@ fun ApplicationConfig.toOpenAiCompatibleConfig(env: Map<String, String> = System
         maxRetries = llm.maxRetries,
         inputCostPerMillionUsd = llm.inputCostPerMillionUsd,
         outputCostPerMillionUsd = llm.outputCostPerMillionUsd,
+    )
+}
+
+fun ApplicationConfig.toClaimSupportJudgeConfig(env: Map<String, String> = System.getenv()): OpenAiCompatibleConfig {
+    val extractionConfig = toOpenAiCompatibleConfig(env)
+    return extractionConfig.copy(
+        model = llm.claimSupportJudgeModel ?: extractionConfig.model,
+        inputCostPerMillionUsd = llm.claimSupportJudgeInputCostPerMillionUsd
+            ?: extractionConfig.inputCostPerMillionUsd,
+        outputCostPerMillionUsd = llm.claimSupportJudgeOutputCostPerMillionUsd
+            ?: extractionConfig.outputCostPerMillionUsd,
     )
 }

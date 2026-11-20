@@ -9,6 +9,7 @@ import dev.langchain4j.model.chat.ChatModel
 import dev.langchain4j.model.openai.OpenAiChatModel
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Tag
+import org.slf4j.LoggerFactory
 import java.nio.file.Files
 import java.nio.file.Path
 import java.time.Duration
@@ -31,6 +32,7 @@ class LangChain4jGoldSetModelComparisonTest {
             val corpus = JsonCorpusNewsSource.fromResource()
             val goldSet = JsonGoldSet.fromResource()
             val results = EXTRACTION_MODELS.map { model ->
+                log.info("Starting Gold-set model comparison run for extraction model {}", model)
                 val extractionRates = TOKEN_RATES.getValue(model)
                 val extractor = LangChain4jNewsItemExtractor(
                     chatModel(token, model),
@@ -39,6 +41,11 @@ class LangChain4jGoldSetModelComparisonTest {
                 )
                 val store = InMemoryEvalStore()
                 val report = RunEval(corpus, extractor, store, goldSet, judge).run()
+                log.info(
+                    "Completed Gold-set model comparison run for extraction model {} metrics={}",
+                    model,
+                    report.metrics,
+                )
                 assertTrue(report.metrics.getValue("expectedItems") > 0, "Gold set must contain expected NewsItems")
                 assertTrue(report.metrics.containsKey("precision"), "Eval report must include item precision")
                 model to report
@@ -109,6 +116,7 @@ class LangChain4jGoldSetModelComparisonTest {
         const val USER_AGENT = "market-brief/0.1.0"
         const val CLAIM_SUPPORT_JUDGE_MODEL = "minimax-m3"
         const val REPORT_PATH = "build/reports/langchain4j-gold-set.md"
+        val log = LoggerFactory.getLogger(LangChain4jGoldSetModelComparisonTest::class.java)
         val EXTRACTION_MODELS = listOf("deepseek-v4.1-flash", "glm-5.3-flash")
         val TOKEN_RATES = mapOf(
             "deepseek-v4.1-flash" to TokenRates(0.15, 0.60),

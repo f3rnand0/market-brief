@@ -27,5 +27,5 @@ class JsonEvalStore(private val directory: Path) : EvalStore {
     }
 
     private fun EvalReportDto.toDomain(markdown: String) =
-        EvalReport(id, java.time.Instant.parse(generatedAt), metrics, version, markdown)
+        EvalReport(id, java.time.Instant.parse(generatedAt), metrics, version, markdown, goldSetVersion, articleIds)
 }

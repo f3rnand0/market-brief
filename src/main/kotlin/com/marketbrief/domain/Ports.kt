@@ -30,7 +30,7 @@ interface NewsItemExtractor {
 }
 
 interface ClaimSupportJudge {
-    suspend fun judge(item: NewsItem): ClaimSupportJudgment
+    suspend fun judge(item: NewsItem, context: ClaimSupportContext): ClaimSupportJudgment
 }
 
 interface ReportStore {
@@ -41,4 +41,14 @@ interface ReportStore {
 interface EvalStore {
     fun save(report: EvalReport)
     fun load(id: String): EvalReport?
+}
+
+interface EvalCheckpointStore {
+    fun load(): EvalCheckpoint?
+    fun save(checkpoint: EvalCheckpoint)
+    fun clear()
+}
+
+interface EvalHistoryStore {
+    fun append(report: EvalReport, durationMillis: Long)
 }
