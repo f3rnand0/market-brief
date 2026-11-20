@@ -371,6 +371,13 @@ multipliers. If usage or rates are unavailable, the report sets
 `JsonEvalStore` writes versioned JSON and Markdown files; the HTTP API exposes
 the JSON report.
 
+After saving a successful report, `MarkdownEvalHistoryStore` prepends an
+inputs-and-models table, a results table, and a result-dependent interpretation
+to `storage.evalHistoryFile` (default `docs/eval-history.md`). The results
+include normalized exact and candidate claim-alignment metrics when available.
+Entries are keyed by report ID so retrying a history write does not add the
+same report twice.
+
 `RunEval` saves each completed Article extraction to `storage.evalsDir/checkpoint.json`.
 If extraction or citation evaluation fails, the next run reuses matching
 extractions for the same Gold version and ordered Article IDs. A completed

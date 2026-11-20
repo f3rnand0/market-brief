@@ -12,3 +12,4 @@ llm:
 
 storage:
   reportsDir: data/reports
+  evalHistoryFile: docs/eval-history.md

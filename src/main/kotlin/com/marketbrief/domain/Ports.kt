@@ -48,3 +48,7 @@ interface EvalCheckpointStore {
     fun save(checkpoint: EvalCheckpoint)
     fun clear()
 }
+
+interface EvalHistoryStore {
+    fun append(report: EvalReport, durationMillis: Long)
+}

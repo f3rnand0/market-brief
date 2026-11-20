@@ -14,6 +14,7 @@ import com.marketbrief.adapters.news.RssNewsSource
 import com.marketbrief.adapters.report.JsonEvalCheckpointStore
 import com.marketbrief.adapters.report.JsonEvalStore
 import com.marketbrief.adapters.report.JsonReportStore
+import com.marketbrief.adapters.report.MarkdownEvalHistoryStore
 import com.marketbrief.application.GenerateDailyReport
 import com.marketbrief.application.RunEval
 import com.marketbrief.config.ApplicationConfig
@@ -64,6 +65,11 @@ object CompositionRoot {
                 JsonGoldSet.fromResource(),
                 claimSupportJudge,
                 checkpointStore = JsonEvalCheckpointStore(Path.of(config.storage.evalsDir)),
+                evalHistoryStore = MarkdownEvalHistoryStore(
+                    Path.of(config.storage.evalHistoryFile),
+                    extractionModel = llmConfig.model,
+                    claimSupportJudgeModel = config.llm.claimSupportJudgeModel ?: llmConfig.model,
+                ),
             ),
             evalStore,
         )

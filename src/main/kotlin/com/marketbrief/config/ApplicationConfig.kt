@@ -6,10 +6,15 @@ import kotlinx.serialization.Serializable
 data class ApplicationConfig(val llm: LlmConfig, val storage: StorageConfig = StorageConfig()) {
 
     @Serializable
-    data class StorageConfig(val reportsDir: String = "data/reports", val evalsDir: String = "data/evals") {
+    data class StorageConfig(
+        val reportsDir: String = "data/reports",
+        val evalsDir: String = "data/evals",
+        val evalHistoryFile: String = "docs/eval-history.md",
+    ) {
         init {
             require(reportsDir.isNotBlank()) { "storage.reportsDir must not be blank" }
             require(evalsDir.isNotBlank()) { "storage.evalsDir must not be blank" }
+            require(evalHistoryFile.isNotBlank()) { "storage.evalHistoryFile must not be blank" }
         }
     }
 

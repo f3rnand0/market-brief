@@ -4,6 +4,7 @@ import com.marketbrief.domain.ClaimSupportJudge
 import com.marketbrief.domain.DayWindow
 import com.marketbrief.domain.EvalCheckpoint
 import com.marketbrief.domain.EvalCheckpointStore
+import com.marketbrief.domain.EvalHistoryStore
 import com.marketbrief.domain.EvalReport
 import com.marketbrief.domain.EvalStore
 import com.marketbrief.domain.ExtractionUsage
@@ -25,6 +26,7 @@ class RunEval(
     claimSupportJudge: ClaimSupportJudge,
     private val clock: Clock = Clock.systemUTC(),
     private val checkpointStore: EvalCheckpointStore? = null,
+    private val evalHistoryStore: EvalHistoryStore? = null,
 ) {
     private val itemMetricsEvaluator = NewsItemMetricsEvaluator()
     private val citationMetricsEvaluator = CitationMetricsEvaluator(claimSupportJudge)
@@ -88,6 +90,7 @@ class RunEval(
             articleIds = articleIds,
         )
         evalStore.save(report)
+        evalHistoryStore?.append(report, elapsedMillis(evalStartedAt))
         checkpointStore?.clear()
         log.info(
             "Completed eval {} for Gold set {} Articles={} elapsedMetrics={}",
